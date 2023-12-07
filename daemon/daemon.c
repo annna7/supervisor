@@ -6,7 +6,6 @@
 #include <signal.h>
 #include <sys/stat.h>
 #include <syslog.h>
-#include <getopt.h>
 #include "utils.h"
 
 #define SOCKET_PATH "/tmp/supervisor_daemon.sock"
@@ -20,8 +19,6 @@ void parse_command_arguments(char *command_str, char *response_str) {
 
     parse_string(command_str, &number_of_tokens, command_tokens);
 
-    printf("Number of tokens: %d\n", number_of_tokens);
-
     char *command = NULL;
     if (number_of_tokens > 0) {
         command = command_tokens[0];
@@ -29,23 +26,19 @@ void parse_command_arguments(char *command_str, char *response_str) {
 
     if (command == NULL) {
         strcpy(response_str, "No command provided");
-        printf("No command provided\n");
-        // Perform necessary cleanup before exiting
-//        exit(EXIT_FAILURE);
+        return;
     }
 
     if (strcmp(command, "init") == 0) {
         strcpy(response_str, "Init");
-        printf("Init\n");
         // TODO: supervisor_init(instance);
     } else if (strcmp(command, "close") == 0) {
         strcpy(response_str, "Close");
-        printf("Close\n");
         // TODO: supervisor_close(instance);
     } else if (strcmp(command, "create-service") == 0) {
         if (number_of_tokens < 5) {
-            printf("Not enough arguments for create-service\n");
-            exit(EXIT_FAILURE);
+            strcpy(response_str, "Not enough arguments for create-service");
+            return;
         }
 
         char *service_name = command_tokens[1];
@@ -57,9 +50,8 @@ void parse_command_arguments(char *command_str, char *response_str) {
     } else {
         strcpy(response_str, "Unknown command");
         syslog(LOG_ERR, "Unknown command: %s", command);
+        return;
     }
-
-    printf("REACHED END\n");
 }
 
 //void parse_command_arguments(char *command_str, char *response_str) {
@@ -158,8 +150,6 @@ void process_commands(int client_socket) {
     }
     buffer[len] = '\0';
 
-    printf("Received command: %s\n", buffer);
-
     parse_command_arguments(buffer, response);
 
     write(client_socket, "ACK\n", 4);
@@ -238,13 +228,12 @@ int main() {
 
     syslog(LOG_NOTICE, "Supervisor daemon started");
 
-    while (1) {
+    while (true) {
         client_socket = accept(server_socket, NULL, NULL);
         if (client_socket < 0) {
             perror("accept");
             continue;
         }
-
         process_commands(client_socket);
         close(client_socket);
     }
