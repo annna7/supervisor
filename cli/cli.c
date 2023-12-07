@@ -3,13 +3,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <getopt.h>
 
 #define SOCKET_PATH "/tmp/supervisor_daemon.sock"
 
 int main(int argc, char *argv[]) {
     struct sockaddr_un addr;
     int socket_fd;
-    char buffer[256];
 
     if (argc < 2) {
         printf("Usage: %s <command>\n", argv[0]);
@@ -27,13 +27,24 @@ int main(int argc, char *argv[]) {
     strncpy(addr.sun_path, SOCKET_PATH, sizeof(addr.sun_path) - 1);
 
     if (connect(socket_fd, (struct sockaddr *) &addr, sizeof(struct sockaddr_un)) < 0) {
-        perror("connect");
+        perror("supervisor daemon connection");
         exit(EXIT_FAILURE);
     }
 
-    write(socket_fd, argv[1], strlen(argv[1]));
+    char buffer[1024] = {0}; // concatenate arguments
+
+    for (int i = 1; i < argc; i++) {
+        strcat(buffer, argv[i]);
+        strcat(buffer, " ");
+    }
+
+    // write response to socket
+    write(socket_fd, buffer, strlen(buffer));
+
+    // read response from daemon via the socket
     read(socket_fd, buffer, sizeof(buffer));
-    printf("Response from daemon: %s\n", buffer);
+
+    printf("%s\n",buffer);
 
     close(socket_fd);
     return 0;

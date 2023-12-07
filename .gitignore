@@ -53,3 +53,16 @@ dkms.conf
 
 .idea
 cmake-build-debug
+
+daemon/cmake-build-debug
+daemon/cmake-build-release
+daemon/CMakeFiles
+daemon/CMakeCache.txt
+
+cli/cmake-build-debug
+cli/cmake-build-release
+cli/CMakeFiles
+cli/CMakeCache.txt
+
+**/Makefile
+**/cmake_install.cmake

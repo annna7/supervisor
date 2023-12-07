@@ -1,8 +1,0 @@
-//
-// Created by anna on 12/6/23.
-//
-
-#ifndef SUPERVISOR_SUPERVISOR_H
-#define SUPERVISOR_SUPERVISOR_H
-
-#endif //SUPERVISOR_SUPERVISOR_H
