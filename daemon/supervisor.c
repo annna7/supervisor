@@ -41,8 +41,8 @@ int supervisor_close(supervisor_t* supervisor) {
     if (!supervisor) {
         return -1;
     }
-    free(supervisor);
     supervisors[supervisor->instance] = NULL;
+    free(supervisor);
     return 0;
 }
 
