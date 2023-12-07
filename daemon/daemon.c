@@ -6,9 +6,18 @@
 #include <signal.h>
 #include <sys/stat.h>
 #include <syslog.h>
+#include <stdbool.h>
+#include <getopt.h>
 #include "utils.h"
+#include "supervisor.h"
 
 #define SOCKET_PATH "/tmp/supervisor_daemon.sock"
+
+typedef struct {
+    int instance;
+    int create_stopped;
+    int restart_times;
+} Options;
 
 void parse_command_arguments(char *command_str, char *response_str) {
     int number_of_tokens;
@@ -19,9 +28,12 @@ void parse_command_arguments(char *command_str, char *response_str) {
 
     parse_string(command_str, &number_of_tokens, command_tokens);
 
+    Options options = {0, 0, 0};
+
     char *command = NULL;
     if (number_of_tokens > 0) {
         command = command_tokens[0];
+        optind++;
     }
 
     if (command == NULL) {
@@ -29,118 +41,80 @@ void parse_command_arguments(char *command_str, char *response_str) {
         return;
     }
 
-    if (strcmp(command, "init") == 0) {
-        strcpy(response_str, "Init");
-        // TODO: supervisor_init(instance);
-    } else if (strcmp(command, "close") == 0) {
-        strcpy(response_str, "Close");
-        // TODO: supervisor_close(instance);
-    } else if (strcmp(command, "create-service") == 0) {
-        if (number_of_tokens < 5) {
-            strcpy(response_str, "Not enough arguments for create-service");
+    if (number_of_tokens == 1) {
+        if (strcmp(command, "list-supervisors") == 0) {
+            strcpy(response_str, "List supervisors");
+            list_supervisors();
+        } else {
+            strcpy(response_str, "Unknown command");
+            syslog(LOG_ERR, "Unknown command: %s", command);
             return;
         }
-
-        char *service_name = command_tokens[1];
-        char *program_path = command_tokens[2];
-        char *argv_service = command_tokens[3];
-        int argc_service = atoi(command_tokens[4]);
-
-        // TODO: supervisor_create_service(instance, service_name, program_path, argv_service, argc_service, create_stopped, restart_times);
     } else {
-        strcpy(response_str, "Unknown command");
-        syslog(LOG_ERR, "Unknown command: %s", command);
-        return;
+        struct option long_options[] = {
+                {"instance", required_argument, 0, 'i'},
+                {"create-stopped", no_argument, 0, 'c'},
+                {"restart-times", required_argument, 0, 'r'},
+                {0, 0, 0, 0}
+        };
+
+        optind = 1;
+        int option_index = 1;
+        int c;
+
+        while ((c = getopt_long(number_of_tokens, command_tokens, "i:cr:", long_options, &option_index)) != -1) {
+            switch (c) {
+                case 'i':
+                    options.instance = atoi(optarg);
+                    syslog(LOG_INFO, "Instance: %d", options.instance);
+                    break;
+                case 'c':
+                    options.create_stopped = 1;
+                    break;
+                case 'r':
+                    options.restart_times = atoi(optarg);
+                    break;
+                case '?':
+                    break;
+                default:
+                    syslog(LOG_ERR,"?? getopt returned character code 0%o ??\n", c);
+                    break;
+            }
+        }
+
+        if (strcmp(command, "init") == 0) {
+            strcpy(response_str, "Init");
+            syslog(LOG_INFO, "Init supervisor %d", options.instance);
+            supervisor_init(options.instance);
+        } else if (strcmp(command, "list-supervisors") == 0) {
+            strcpy(response_str, "List supervisors");
+            list_supervisors();
+        } else if (strcmp(command, "close") == 0) {
+            strcpy(response_str, "Close");
+            supervisor_close(supervisor_get(options.instance));
+        } else if (strcmp(command, "create-service") == 0) {
+            if (optind + 3 > number_of_tokens) {
+                strcpy(response_str, "Not enough arguments for create-service");
+                return;
+            }
+
+            char *service_name = command_tokens[optind++];
+            char *program_path = command_tokens[optind++];
+            char *argv_service = command_tokens[optind++];
+            int argc_service = atoi(command_tokens[optind++]);
+
+            // TODO: supervisor_create_service(options.instance, service_name, program_path, argv_service, argc_service, options.create_stopped, options.restart_times);
+        } else {
+            strcpy(response_str, "Unknown command");
+            syslog(LOG_ERR, "Unknown command: %s", command);
+            return;
+        }
+    }
+
+    for (int i = 0; i < 64; i++) {
+        free(command_tokens[i]);
     }
 }
-
-//void parse_command_arguments(char *command_str, char *response_str) {
-//    int number_of_tokens;
-//    char *command_tokens[64];
-//    for (int i = 0; i < 64; i++) {
-//        command_tokens[i] = malloc(64 * sizeof(char));
-//    }
-//
-//    parse_string(command_str, &number_of_tokens, command_tokens);
-//
-//    printf("Number of tokens: %d\n", number_of_tokens);
-//
-//    int instance = 0;
-//    int create_stopped = 0;
-//    int restart_times = 0;
-//
-//    struct option long_options[] = {
-//            {"instance", required_argument, 0, 'i'},
-//            {"create-stopped", no_argument, &create_stopped, 1},
-//            {"restart-times", required_argument, 0, 'r'},
-//            {0, 0, 0, 0}
-//    };
-//
-//    int option_index = 0;
-//    int c;
-//
-//    optind = 1;
-//
-//    printf("Number of tokens: %d\n", number_of_tokens);
-//
-//    while ((c = getopt_long(number_of_tokens, command_tokens, "i:r:", long_options, &option_index)) != -1) {
-//        switch (c) {
-//            case 'i':
-//                instance = atoi(optarg);
-//                break;
-//            case 'r':
-//                restart_times = atoi(optarg);
-//                break;
-//            case '?':
-//                break;
-//            default:
-//                printf("?? getopt returned character code 0%o ??\n", c);
-//                break;
-//        }
-//    }
-//
-//    char *command = NULL;
-//    if (optind < number_of_tokens) {
-//        command = command_tokens[optind++];
-//    }
-//
-//    if (command == NULL) {
-//        response_str = "No command provided\n";
-//        printf("No command provided\n");
-//        // Perform necessary cleanup before exiting
-//        exit(EXIT_FAILURE);
-//    }
-//
-//    if (strcmp(command, "init") == 0) {
-//        response_str = "Init\n";
-//        printf("Init\n");
-//        // TODO: supervisor_init(instance);
-//    } else if (strcmp(command, "close") == 0) {
-//        response_str = "Close\n";
-//        printf("Close\n");
-//        // TODO: supervisor_close(instance);
-//    } else if (strcmp(command, "create-service") == 0) {
-//        if (optind + 3 > number_of_tokens) {
-//            printf("Not enough arguments for create-service\n");
-//            exit(EXIT_FAILURE);
-//        }
-//
-//        char *service_name = command_tokens[optind++];
-//        char *program_path = command_tokens[optind++];
-//        char *argv_service = command_tokens[optind++];
-//        int argc_service = atoi(command_tokens[optind++]);
-//
-//        // TODO: supervisor_create_service(instance, service_name, program_path, argv_service, argc_service, create_stopped, restart_times);
-//    } else {
-//        syslog(LOG_ERR, "Unknown command: %s", command);
-//        exit(EXIT_FAILURE);
-//    }
-//
-//    for (int i = 0; i < 64; i++) {
-//        free(command_tokens[i]);
-//    }
-////    strcpy(response_str, "ACK");
-//}
 
 void process_commands(int client_socket) {
     char buffer[256], response[256];
@@ -194,11 +168,10 @@ void daemonize() {
     for (int x = sysconf(_SC_OPEN_MAX); x >= 0; x--) {
         close(x);
     }
-
-    openlog("supervisor_daemon", LOG_PID, LOG_DAEMON);
 }
 
 int main() {
+    openlog("supervisor_daemon", LOG_PID, LOG_DAEMON);
     daemonize();
 
     int server_socket, client_socket;

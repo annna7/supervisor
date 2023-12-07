@@ -17,3 +17,4 @@ void parse_string(char *input_string, int* number_of_tokens, char **parsed_token
         (*number_of_tokens)++;
     }
 }
+

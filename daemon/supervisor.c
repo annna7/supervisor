@@ -1,7 +1,17 @@
-#include "supervisor.h"
 #include <stdlib.h>
+#include <syslog.h>
+#include "supervisor.h"
 
-supervisor_t* supervisors[MAX_SUPERVIORS];
+supervisor_t* supervisors[MAX_SUPERVIORS] = {NULL};
+
+void list_supervisors() {
+    syslog(LOG_INFO, "list_supervisors");
+    for (int i = 0; i < MAX_SUPERVIORS; i++) {
+        if (supervisors[i]) {
+            syslog(LOG_INFO, "supervisor %d", i);
+        }
+    }
+}
 
 supervisor_t* supervisor_init(int instance) {
     if (instance < 0 || instance >= MAX_SUPERVIORS) {
@@ -16,6 +26,7 @@ supervisor_t* supervisor_init(int instance) {
     }
     supervisor->instance = instance;
     supervisors[instance] = supervisor;
+    syslog(LOG_INFO, "%s %d", "supervisor_init", instance);
     return supervisor;
 }
 
@@ -28,9 +39,6 @@ supervisor_t* supervisor_get(int instance) {
 
 int supervisor_close(supervisor_t* supervisor) {
     if (!supervisor) {
-        return -1;
-    }
-    if (supervisors[supervisor->instance] != supervisor) {
         return -1;
     }
     free(supervisor);

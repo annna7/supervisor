@@ -13,6 +13,7 @@ typedef struct {
 
 supervisor_t* supervisor_init(int instance);
 supervisor_t* supervisor_get(int instance);
+void list_supervisors();
 int supervisor_close(supervisor_t*);
 int supervisor_list(supervisor_t* supervisor, const char *** service_names, unsigned int * count);
 int supervisor_freelist(supervisor_t* supervisor, const char ** service_names, int count);
