@@ -5,6 +5,7 @@
 #include <string.h>
 #include <syslog.h>
 #include <signal.h>
+#include <sys/wait.h>
 #include "service.h"
 #include "utils.h"
 
@@ -20,6 +21,7 @@ service_t service_create(const char * service_name, const char * program_path, c
         syslog(LOG_ERR, "Failed to execv");
         return get_empty_service();
     }
+    syslog(LOG_INFO, "Service %s started with pid %d", service_name, pid);
     service.service_name = strdup(format_service_name(service_name, pid));
     service.program_path = program_path;
     service.argv = argv;
@@ -30,6 +32,7 @@ service_t service_create(const char * service_name, const char * program_path, c
 }
 
 int service_close(service_t service) {
+    syslog(LOG_INFO, "Closing service %s", service.service_name);
     if (service.service_name == NULL) {
         return -1;
     }
@@ -38,6 +41,9 @@ int service_close(service_t service) {
     char time_str[64];
     parse_formatted_service_name((char*) service.service_name, service_name, &pid, time_str);
     kill(pid, SIGKILL);
+    int status;
+    waitpid(pid, &status, 0);
+    syslog(LOG_INFO, "Service %s closed", service.service_name);
     free((void*) service.service_name);
     return 0;
 }

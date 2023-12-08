@@ -16,8 +16,8 @@ int main(int argc, char *argv[]) {
 	perror("error open file");
 	return 1;
     }
-    for (int i = 0; i < 10; ++i) {
-	fprintf(log_file, "%s\n", message);
+    for (int i = 0; i < 100; ++i) {
+	fprintf(log_file, "%d, %s\n", i, message);
 	fflush(log_file);
 	sleep(2);
     }

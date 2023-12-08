@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <stdio.h>
+#include <sys/syslog.h>
 
 
 void parse_string(char *input_string, int* number_of_tokens, char **parsed_tokens) {
@@ -26,7 +27,7 @@ char* format_service_name(const char *service_name, pid_t pid) {
     char time_str[64];
     time_t now = time(NULL);
     strftime(time_str, sizeof(time_str), "%c", localtime(&now));
-    snprintf(format_str, sizeof(format_str), "%s_%d_%s", service_name, pid, time_str);
+    snprintf(format_str, 256, "%s_%d_%s", service_name, pid, time_str);
     return format_str;
 }
 
@@ -36,6 +37,7 @@ void parse_formatted_service_name(const char* formatted_service_name, char *serv
     int number_of_tokens = 0;
 
     char *formatted_service_name_copy = malloc(strlen(formatted_service_name) + 1);
+    strcpy(formatted_service_name_copy, formatted_service_name);  // Copy the content
 
     token = strtok(formatted_service_name_copy, "_");
     while (token != NULL) {

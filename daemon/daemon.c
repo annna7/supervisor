@@ -133,19 +133,18 @@ void parse_command_arguments(char *command_str, char *response_str) {
 //            supervisor_(supervisor, pid);
 //            strcpy(response_str, "Service opened");
         } else if (strcmp(command, "close-service") == 0) {
-            if (optind + 2 > number_of_tokens) {
+            if (optind + 1 > number_of_tokens) {
                 strcpy(response_str, "Not enough arguments for close-service");
                 return;
             }
-            char *service_name = command_tokens[optind++];
-            int instance = atoi(command_tokens[optind++]);
-            supervisor_t* supervisor = supervisor_get(instance);
+            pid_t pid = atoi(command_tokens[optind++]);
+            supervisor_t* supervisor = supervisor_get(options.instance);
             if (supervisor == NULL) {
                 strcpy(response_str, "Invalid supervisor instance");
                 return;
             }
 
-            supervisor_close_service_wrapper(supervisor, service_name);
+            supervisor_close_service_wrapper(supervisor, pid);
             strcpy(response_str, "Service closed");
         }
 

@@ -73,19 +73,29 @@ int supervisor_create_service_wrapper(supervisor_t* supervisor, const char * ser
         syslog(LOG_ERR, "Failed to create service");
         return -1;
     }
+    syslog(LOG_INFO, "%s\n", new_service.service_name);
     supervisor->services[i] = new_service;
     return 0;
 }
 
-int supervisor_close_service_wrapper(supervisor_t* supervisor, const char * service_name) {
+int supervisor_close_service_wrapper(supervisor_t* supervisor, pid_t pid) {
     if (!supervisor) {
         return -1;
     }
+    syslog(LOG_INFO, "supervisor_close_service_wrapper called with pid: %d", pid);
+    syslog(LOG_INFO, "supervisor->instance: %d", supervisor->instance);
     for (int i = 0; i < MAX_SERVICES_PER_INSTANCE; i++) {
-        if (supervisor->services[i].service_name && strcmp(supervisor->services[i].service_name, service_name) == 0) {
-            service_close(supervisor->services[i]);
-            supervisor->services[i] = get_empty_service();
-            return 0;
+        if (supervisor->services[i].service_name) {
+            char service_name[64];
+            pid_t service_pid;
+            char time_str[64];
+            parse_formatted_service_name((char*) supervisor->services[i].service_name, service_name, &service_pid, time_str);
+            syslog(LOG_INFO, "service_name: %s, service_pid: %d", service_name, service_pid);
+            if (service_pid == pid) {
+                service_close(supervisor->services[i]);
+                supervisor->services[i] = get_empty_service();
+                return 0;
+            }
         }
     }
     return 0;
