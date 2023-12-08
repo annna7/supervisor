@@ -19,3 +19,6 @@ The two communicate via a unix socket, with the cli sending the commands receive
 * `./cli init --instance 2`
 * `./cli list-supervisors`
 * `./cli close --instance 2`
+
+### Logs
+`journalctl -u supervisor -n 10` - show last 10 commands

@@ -17,9 +17,10 @@ typedef struct {
 
 struct supervisor_t;
 
-service_t service_create(struct supervisor_t supervisor, const char * service_name, const char * program_path, const char ** argv, int argc, int flags);
+service_t get_empty_service();
+service_t service_create(const char * service_name, const char * program_path, const char ** argv, int argc, int flags);
 int service_close(service_t service);
-service_t service_open(struct supervisor_t supervisor, const char * service_name);
+service_t service_open(const char * service_name);
 int service_status(service_t service);
 int service_suspend(service_t service);
 int service_resume(service_t service);

@@ -100,11 +100,56 @@ void parse_command_arguments(char *command_str, char *response_str) {
 
             char *service_name = command_tokens[optind++];
             char *program_path = command_tokens[optind++];
-            char *argv_service = command_tokens[optind++];
             int argc_service = atoi(command_tokens[optind++]);
 
-            // TODO: supervisor_create_service(options.instance, service_name, program_path, argv_service, argc_service, options.create_stopped, options.restart_times);
-        } else {
+            char **argv_service = malloc((argc_service + 2) * sizeof(char*)); // +2 for the program name and the NULL terminator
+
+            argv_service[0] = service_name;
+
+            for(int i = 0; i < argc_service; i++) {
+                argv_service[i+1] = command_tokens[optind++];
+            }
+
+            argv_service[argc_service + 1] = NULL;
+
+            supervisor_create_service_wrapper(supervisor_get(options.instance), service_name, program_path,
+                                              argv_service, argc_service, options.create_stopped | SUPERVISOR_FLAGS_RESTARTTIMES(options.restart_times));
+
+            free(argv_service);
+//        } else if (strcmp(command, "open-service") == 0) {
+//            if (optind + 2 > number_of_tokens) {
+//                strcpy(response_str, "Not enough arguments for open-service");
+//                return;
+//            }
+//
+//            pid_t pid = atoi(command_tokens[optind++]);
+//            int instance = atoi(command_tokens[optind++]);
+//            supervisor_t* supervisor = supervisor_get(instance);
+//            if (supervisor == NULL) {
+//                strcpy(response_str, "Invalid supervisor instance");
+//                return;
+//            }
+//
+//            supervisor_(supervisor, pid);
+//            strcpy(response_str, "Service opened");
+        } else if (strcmp(command, "close-service") == 0) {
+            if (optind + 2 > number_of_tokens) {
+                strcpy(response_str, "Not enough arguments for close-service");
+                return;
+            }
+            char *service_name = command_tokens[optind++];
+            int instance = atoi(command_tokens[optind++]);
+            supervisor_t* supervisor = supervisor_get(instance);
+            if (supervisor == NULL) {
+                strcpy(response_str, "Invalid supervisor instance");
+                return;
+            }
+
+            supervisor_close_service_wrapper(supervisor, service_name);
+            strcpy(response_str, "Service closed");
+        }
+
+        else {
             strcpy(response_str, "Unknown command");
             syslog(LOG_ERR, "Unknown command: %s", command);
             return;
@@ -126,6 +171,7 @@ void process_commands(int client_socket) {
 
     parse_command_arguments(buffer, response);
 
+    printf("Received %s\n", buffer);
     write(client_socket, "ACK\n", 4);
     syslog(LOG_INFO, "Received command: %s", buffer);
     syslog(LOG_INFO, "Response: %s", response);
@@ -171,8 +217,9 @@ void daemonize() {
 }
 
 int main() {
-    openlog("supervisor_daemon", LOG_PID, LOG_DAEMON);
-    daemonize();
+    openlog("supervisor", LOG_PID, LOG_DAEMON);
+    syslog(LOG_NOTICE, "Supervisor daemon starting");
+//    daemonize();
 
     int server_socket, client_socket;
     struct sockaddr_un server_addr;
