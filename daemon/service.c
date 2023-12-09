@@ -26,6 +26,7 @@ service_t service_create(const char * service_name, const char * program_path, c
         }
 
         syslog(LOG_INFO, "%s %s %s", "Starting service", service_name, program_path);
+        syslog(LOG_INFO, "%s %s %s", "Starting service with arguments", argv[0], argv[1]);
         execv(program_path, (char *const *) argv);
         syslog(LOG_ERR, "Failed to execv");
         syslog(LOG_ERR, "%d %s", errno, strerror(errno));
