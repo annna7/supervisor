@@ -156,14 +156,28 @@ void parse_command_arguments(char *command_str, char *response_str) {
 
             supervisor_close_service_wrapper(supervisor, pid);
             strcpy(response_str, "Service closed");
+        } else if (strcmp(command, "list-supervisor") == 0) {
+            unsigned int *count = malloc(sizeof(unsigned int));
+            const char ***service_names = malloc(sizeof(char **));
+            supervisor_list(supervisor_get(options.instance), service_names, count);
+            // go through service_names and print them
+            strcpy(response_str, "List supervisor\n");
+            for (int i = 0; i < *count; i++) {
+                strcat(response_str, (*service_names)[i]);
+                strcat(response_str, "\n");
+            }
+            syslog(LOG_INFO, "list: %s", response_str);
+            for (int i = 0; i < *count; i++) {
+                free((void*)(*service_names)[i]);
+            }
+            free(*service_names);
+            free(count);
+        } else {
+                strcpy(response_str, "Unknown command");
+                syslog(LOG_ERR, "Unknown command: %s", command);
+                return;
+            }
         }
-
-        else {
-            strcpy(response_str, "Unknown command");
-            syslog(LOG_ERR, "Unknown command: %s", command);
-            return;
-        }
-    }
 
     for (int i = 0; i < 64; i++) {
         free(command_tokens[i]);

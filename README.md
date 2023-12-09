@@ -25,10 +25,11 @@ The two communicate via a unix socket, with the cli sending the commands receive
 
 ## TODO
 * supervisor-list
-* handle pid/service_name
+* handle pid/service_name 
 * service_open
 * handle status for services
 * polling mechanism
 * handle service restarts
 * implement a clean interface for sending similar signals
-* concurrency? 
+* concurrency?
+* ordonat printre loguri!

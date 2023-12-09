@@ -116,7 +116,9 @@ int supervisor_list(supervisor_t* supervisor, const char *** service_names, unsi
     *count = 0;
     for (int i = 0; i < MAX_SERVICES_PER_INSTANCE; i++) {
         if (supervisor->services[i].service_name) {
-            (*service_names)[*count] = supervisor->services[i].service_name;
+            syslog(LOG_INFO, "supervisor_list: %s %d\n", supervisor->services[i].formatted_service_name, supervisor->services[i].pid);
+            (*service_names)[*count] = malloc(sizeof(char) * (strlen(supervisor->services[i].formatted_service_name) + 1)); // +1 for the null terminator
+            strcpy((*service_names)[*count], supervisor->services[i].formatted_service_name);
             (*count)++;
         }
     }

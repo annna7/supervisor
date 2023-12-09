@@ -16,6 +16,7 @@ typedef struct {
     const char ** argv;
     int argc;
     int flags;
+    int status;
 } service_t;
 
 struct supervisor_t;
