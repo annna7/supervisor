@@ -5,10 +5,13 @@
 #include <syslog.h>
 #include <signal.h>
 #include <sys/wait.h>
+#include <uv/errno.h>
 #include "service.h"
 #include "utils.h"
 
 service_t service_create(const char * service_name, const char * program_path, const char ** argv, int argc, int flags) {
+    syslog(LOG_INFO, "Creating service %s", service_name);
+    syslog(LOG_INFO, "Program path %s", program_path);
     service_t service = get_empty_service();
     pid_t pid = fork();
     if (pid < 0) {
@@ -16,8 +19,16 @@ service_t service_create(const char * service_name, const char * program_path, c
         return get_empty_service();
     }
     if (pid == 0) {
+        if (access(program_path, F_OK | X_OK) != 0) {
+            syslog(LOG_ERR, "Failed to access program %s", program_path);
+            syslog(LOG_ERR, "%d %s", errno, strerror(errno));
+            return get_empty_service();
+        }
+
+        syslog(LOG_INFO, "%s %s %s", "Starting service", service_name, program_path);
         execv(program_path, (char *const *) argv);
         syslog(LOG_ERR, "Failed to execv");
+        syslog(LOG_ERR, "%d %s", errno, strerror(errno));
         return get_empty_service();
     }
     syslog(LOG_INFO, "Service %s started with pid %d", service_name, pid);

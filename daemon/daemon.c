@@ -98,8 +98,8 @@ void parse_command_arguments(char *command_str, char *response_str) {
                 return;
             }
 
-            char *service_name = command_tokens[optind++];
             char *program_path = command_tokens[optind++];
+            char *service_name = command_tokens[optind++];
             int argc_service = atoi(command_tokens[optind++]);
 
             char **argv_service = malloc(
@@ -218,7 +218,7 @@ void daemonize() {
 
     umask(0);
 
-    chdir("/");
+//    chdir("/");
 
     for (int x = sysconf(_SC_OPEN_MAX); x >= 0; x--) {
         close(x);
@@ -228,7 +228,7 @@ void daemonize() {
 int main() {
     openlog("supervisor", LOG_PID, LOG_DAEMON);
     syslog(LOG_NOTICE, "Supervisor daemon starting");
-//    daemonize();
+    daemonize();
 
     int server_socket, client_socket;
     struct sockaddr_un server_addr;
