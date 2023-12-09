@@ -22,11 +22,10 @@ void parse_string(char *input_string, int* number_of_tokens, char **parsed_token
     }
 }
 
-char* format_service_name(const char *service_name, pid_t pid) {
+char* format_service_name(const char *service_name, pid_t pid, time_t start_time) {
     char *format_str = malloc(256 * sizeof(char));
     char time_str[64];
-    time_t now = time(NULL);
-    strftime(time_str, sizeof(time_str), "%c", localtime(&now));
+    strftime(time_str, sizeof(time_str), "%c", localtime(&start_time));
     snprintf(format_str, 256, "%s_%d_%s", service_name, pid, time_str);
     return format_str;
 }

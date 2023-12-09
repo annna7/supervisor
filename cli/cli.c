@@ -41,10 +41,11 @@ int main(int argc, char *argv[]) {
     // write response to socket
     write(socket_fd, buffer, strlen(buffer));
 
+    memset(buffer, 0, sizeof(buffer));
     // read response from daemon via the socket
     read(socket_fd, buffer, sizeof(buffer));
 
-    printf("%s\n",buffer);
+    printf("%s\n", buffer);
 
     close(socket_fd);
     return 0;

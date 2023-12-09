@@ -1,7 +1,6 @@
 #include <time.h>
 #include <unistd.h>
 #include <stdlib.h>
-#include <stdio.h>
 #include <string.h>
 #include <syslog.h>
 #include <signal.h>
@@ -22,7 +21,10 @@ service_t service_create(const char * service_name, const char * program_path, c
         return get_empty_service();
     }
     syslog(LOG_INFO, "Service %s started with pid %d", service_name, pid);
-    service.service_name = strdup(format_service_name(service_name, pid));
+    service.pid = pid;
+    service.start_time = time(NULL);
+    service.service_name = service_name;
+    service.formatted_service_name = strdup(format_service_name(service_name, pid, service.start_time));
     service.program_path = program_path;
     service.argv = argv;
     service.argc = argc;
@@ -36,15 +38,12 @@ int service_close(service_t service) {
     if (service.service_name == NULL) {
         return -1;
     }
-    char service_name[64];
-    pid_t pid;
-    char time_str[64];
-    parse_formatted_service_name((char*) service.service_name, service_name, &pid, time_str);
-    kill(pid, SIGKILL);
+
+    kill(service.pid, SIGKILL);
+
     int status;
-    waitpid(pid, &status, 0);
+    waitpid(service.pid, &status, 0);
     syslog(LOG_INFO, "Service %s closed", service.service_name);
-    free((void*) service.service_name);
     return 0;
 }
 

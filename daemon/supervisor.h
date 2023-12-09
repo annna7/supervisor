@@ -16,7 +16,7 @@ int get_free_service_index(supervisor_t *supervisor);
 int supervisor_close(supervisor_t*);
 int supervisor_list(supervisor_t* supervisor, const char *** service_names, unsigned int * count);
 int supervisor_freelist(supervisor_t* supervisor, const char ** service_names, int count);
-int supervisor_create_service_wrapper(supervisor_t* supervisor, const char * service_name, const char * program_path, const char ** argv, int argc, int flags);
+int supervisor_create_service_wrapper(supervisor_t* supervisor, const char * service_name, const char * program_path, const char ** argv, int argc, int flags, pid_t *new_pid);
 int supervisor_close_service_wrapper(supervisor_t* supervisor, pid_t pid);
 
 #endif

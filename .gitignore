@@ -7,6 +7,9 @@
 *.obj
 *.elf
 
+# Logs
+**.txt
+
 # Linker output
 *.ilk
 *.map
@@ -66,3 +69,6 @@ cli/CMakeCache.txt
 
 **/Makefile
 **/cmake_install.cmake
+**/CMakeCache.txt
+**/CMakeFiles
+build/

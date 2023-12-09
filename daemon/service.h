@@ -8,7 +8,10 @@
 #define SUPERVISOR_STATUS_STOPPED 0x4
 
 typedef struct {
+    pid_t pid;
+    time_t start_time;
     const char * service_name;
+    const char * formatted_service_name;
     const char * program_path;
     const char ** argv;
     int argc;

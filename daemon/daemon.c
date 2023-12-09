@@ -102,19 +102,29 @@ void parse_command_arguments(char *command_str, char *response_str) {
             char *program_path = command_tokens[optind++];
             int argc_service = atoi(command_tokens[optind++]);
 
-            char **argv_service = malloc((argc_service + 2) * sizeof(char*)); // +2 for the program name and the NULL terminator
+            char **argv_service = malloc(
+                    (argc_service + 2) * sizeof(char *)); // +2 for the program name and the NULL terminator
 
             argv_service[0] = service_name;
 
-            for(int i = 0; i < argc_service; i++) {
-                argv_service[i+1] = command_tokens[optind++];
+            for (int i = 0; i < argc_service; i++) {
+                argv_service[i + 1] = command_tokens[optind++];
             }
 
             argv_service[argc_service + 1] = NULL;
 
+            pid_t *new_pid = malloc(sizeof(pid_t));
             supervisor_create_service_wrapper(supervisor_get(options.instance), service_name, program_path,
-                                              argv_service, argc_service, options.create_stopped | SUPERVISOR_FLAGS_RESTARTTIMES(options.restart_times));
+                                              argv_service, argc_service, options.create_stopped |
+                                                                          SUPERVISOR_FLAGS_RESTARTTIMES(
+                                                                                  options.restart_times), new_pid);
 
+            if (!new_pid) {
+                strcpy(response_str, "Service not created");
+            } else {
+                sprintf(response_str, "Service created with pid %d\n", *new_pid);
+            }
+            free(new_pid);
             free(argv_service);
 //        } else if (strcmp(command, "open-service") == 0) {
 //            if (optind + 2 > number_of_tokens) {
@@ -160,8 +170,8 @@ void parse_command_arguments(char *command_str, char *response_str) {
     }
 }
 
-void process_commands(int client_socket) {
-    char buffer[256], response[256];
+void process_commands(int client_socket, char *response) {
+    char buffer[256];
     int len = read(client_socket, buffer, sizeof(buffer) - 1);
     if (len == 0) {
         return;
@@ -171,7 +181,7 @@ void process_commands(int client_socket) {
     parse_command_arguments(buffer, response);
 
     printf("Received %s\n", buffer);
-    write(client_socket, "ACK\n", 4);
+    printf("Response %s\n", response);
     syslog(LOG_INFO, "Received command: %s", buffer);
     syslog(LOG_INFO, "Response: %s", response);
 }
@@ -253,7 +263,10 @@ int main() {
             perror("accept");
             continue;
         }
-        process_commands(client_socket);
+        char *response = malloc(256 * sizeof(char));
+        process_commands(client_socket, response);
+        write(client_socket, response, strlen(response));
+        free(response);
         close(client_socket);
     }
 
