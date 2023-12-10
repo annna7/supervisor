@@ -8,6 +8,7 @@
 #include <syslog.h>
 #include <stdbool.h>
 #include <getopt.h>
+#include <sys/wait.h>
 #include "utils.h"
 #include "supervisor.h"
 
@@ -18,6 +19,74 @@ typedef struct {
     int create_stopped;
     int restart_times;
 } Options;
+
+void daemonize();
+void process_commands(int client_socket, char *response);
+void parse_command_arguments(char *command_str, char *response_str);
+void handle_sigchld(int sig, siginfo_t *siginfo, void *context);
+
+int main() {
+    struct sigaction sa;
+    sa.sa_flags = SA_SIGINFO;
+    sa.sa_sigaction = handle_sigchld;
+    sigemptyset(&sa.sa_mask);
+    if (sigaction(SIGCHLD, &sa, NULL) == -1) {
+        perror("sigaction");
+        return 1;
+    }
+
+    openlog("supervisor", LOG_PID, LOG_DAEMON);
+    syslog(LOG_NOTICE, "Supervisor daemon starting");
+    daemonize();
+
+    int server_socket, client_socket;
+    struct sockaddr_un server_addr;
+
+    server_socket = socket(AF_UNIX, SOCK_STREAM, 0);
+    if (server_socket < 0) {
+        perror("socket");
+        exit(EXIT_FAILURE);
+    }
+
+    memset(&server_addr, 0, sizeof(struct sockaddr_un));
+    server_addr.sun_family = AF_UNIX;
+    strncpy(server_addr.sun_path, SOCKET_PATH, sizeof(server_addr.sun_path) - 1);
+
+    unlink(SOCKET_PATH);
+
+    if (bind(server_socket, (struct sockaddr *) &server_addr, sizeof(struct sockaddr_un)) < 0) {
+        perror("bind");
+        exit(EXIT_FAILURE);
+    }
+
+    if (listen(server_socket, 5) < 0) {
+        perror("listen");
+        exit(EXIT_FAILURE);
+    }
+
+    syslog(LOG_NOTICE, "Supervisor daemon started");
+
+    while (true) {
+        client_socket = accept(server_socket, NULL, NULL);
+        if (client_socket < 0) {
+            perror("accept");
+            continue;
+        }
+        char *response = malloc(256 * sizeof(char));
+        process_commands(client_socket, response);
+        write(client_socket, response, strlen(response));
+        free(response);
+        close(client_socket);
+    }
+
+    close(server_socket);
+    unlink(SOCKET_PATH);
+    syslog(LOG_NOTICE, "Supervisor daemon terminated");
+
+    closelog();
+
+    return 0;
+}
 
 void parse_command_arguments(char *command_str, char *response_str) {
     int number_of_tokens;
@@ -126,22 +195,21 @@ void parse_command_arguments(char *command_str, char *response_str) {
             }
             free(new_pid);
             free(argv_service);
-//        } else if (strcmp(command, "open-service") == 0) {
-//            if (optind + 2 > number_of_tokens) {
-//                strcpy(response_str, "Not enough arguments for open-service");
-//                return;
-//            }
-//
-//            pid_t pid = atoi(command_tokens[optind++]);
-//            int instance = atoi(command_tokens[optind++]);
-//            supervisor_t* supervisor = supervisor_get(instance);
-//            if (supervisor == NULL) {
-//                strcpy(response_str, "Invalid supervisor instance");
-//                return;
-//            }
-//
-//            supervisor_(supervisor, pid);
-//            strcpy(response_str, "Service opened");
+        } else if (strcmp(command, "open-service") == 0) {
+            if (optind + 1 > number_of_tokens) {
+                strcpy(response_str, "Not enough arguments for open-service");
+                return;
+            }
+
+            pid_t pid = atoi(command_tokens[optind++]);
+            supervisor_t* supervisor = supervisor_get(options.instance);
+            if (supervisor == NULL) {
+                strcpy(response_str, "Invalid supervisor instance");
+                return;
+            }
+
+            supervisor_open_service_wrapper(supervisor, pid);
+            strcpy(response_str, "Service opened");
         } else if (strcmp(command, "close-service") == 0) {
             if (optind + 1 > number_of_tokens) {
                 strcpy(response_str, "Not enough arguments for close-service");
@@ -154,13 +222,12 @@ void parse_command_arguments(char *command_str, char *response_str) {
                 return;
             }
 
-            supervisor_close_service_wrapper(supervisor, pid);
+            supervisor_send_command_to_existing_service_wrapper(supervisor, pid, KILL_SERVICE);
             strcpy(response_str, "Service closed");
         } else if (strcmp(command, "list-supervisor") == 0) {
             unsigned int *count = malloc(sizeof(unsigned int));
             const char ***service_names = malloc(sizeof(char **));
             supervisor_list(supervisor_get(options.instance), service_names, count);
-            // go through service_names and print them
             strcpy(response_str, "List supervisor\n");
             for (int i = 0; i < *count; i++) {
                 strcat(response_str, (*service_names)[i]);
@@ -168,16 +235,37 @@ void parse_command_arguments(char *command_str, char *response_str) {
             }
             syslog(LOG_INFO, "list: %s", response_str);
             for (int i = 0; i < *count; i++) {
-                free((void*)(*service_names)[i]);
+                free((void *) (*service_names)[i]);
             }
             free(*service_names);
             free(count);
-        } else {
-                strcpy(response_str, "Unknown command");
-                syslog(LOG_ERR, "Unknown command: %s", command);
+        } else if (strcmp(command, "supervisor-freelist") == 0) {
+            if (optind + 1 > number_of_tokens) {
+                strcpy(response_str, "Not enough arguments for supervisor-freelist");
                 return;
             }
+
+            int instance = atoi(command_tokens[optind++]);
+            supervisor_t* supervisor = supervisor_get(instance);
+            if (supervisor == NULL) {
+                strcpy(response_str, "Invalid supervisor instance");
+                return;
+            }
+
+            int count = atoi(command_tokens[optind++]);
+            pid_t* pid_array = malloc(count * sizeof(pid_t));
+            for (int i = 0; i < count; i++) {
+                pid_array[i] = atoi(command_tokens[optind++]);
+            }
+
+            supervisor_freelist(supervisor, pid_array, count);
+            strcpy(response_str, "Services freed");
+        } else {
+            strcpy(response_str, "Unknown command");
+            syslog(LOG_ERR, "Unknown command: %s", command);
+            return;
         }
+    }
 
     for (int i = 0; i < 64; i++) {
         free(command_tokens[i]);
@@ -239,56 +327,60 @@ void daemonize() {
     }
 }
 
-int main() {
-    openlog("supervisor", LOG_PID, LOG_DAEMON);
-    syslog(LOG_NOTICE, "Supervisor daemon starting");
-    daemonize();
+void handle_sigchld(int sig, siginfo_t *siginfo, void *context) {
+    pid_t pid = siginfo->si_pid;
+    syslog(LOG_INFO, "Received SIGCHLD from %d", pid);
 
-    int server_socket, client_socket;
-    struct sockaddr_un server_addr;
+    int status;
+    waitpid(pid, &status, 0);
 
-    server_socket = socket(AF_UNIX, SOCK_STREAM, 0);
-    if (server_socket < 0) {
-        perror("socket");
-        exit(EXIT_FAILURE);
+    int instance = get_supervisor_instance_from_service_pid(pid);
+    supervisor_t* supervisor = supervisor_get(instance);
+    if (supervisor == NULL) {
+        syslog(LOG_ERR, "Invalid supervisor instance");
+        return;
     }
 
-    memset(&server_addr, 0, sizeof(struct sockaddr_un));
-    server_addr.sun_family = AF_UNIX;
-    strncpy(server_addr.sun_path, SOCKET_PATH, sizeof(server_addr.sun_path) - 1);
-
-    unlink(SOCKET_PATH);
-
-    if (bind(server_socket, (struct sockaddr *) &server_addr, sizeof(struct sockaddr_un)) < 0) {
-        perror("bind");
-        exit(EXIT_FAILURE);
+    int service_index = get_service_index_from_pid(supervisor, pid);
+    if (service_index == -1) {
+        syslog(LOG_ERR, "Invalid service, logic error occurred");
+        return;
     }
 
-    if (listen(server_socket, 5) < 0) {
-        perror("listen");
-        exit(EXIT_FAILURE);
-    }
-
-    syslog(LOG_NOTICE, "Supervisor daemon started");
-
-    while (true) {
-        client_socket = accept(server_socket, NULL, NULL);
-        if (client_socket < 0) {
-            perror("accept");
-            continue;
+    if (WIFEXITED(status)) {
+        syslog(LOG_INFO, "Child %d exited normally with status %d", pid, WEXITSTATUS(status));
+        supervisor_remove_service_wrapper(supervisor, pid);
+//        supervisor_send_command_to_existing_service_wrapper(supervisor, pid, REMOVE_SERVICE);
+        // TODO: remove the service from supervisor or modify its status to KILLED?
+    } else if (WIFSIGNALED(status)) {
+        syslog(LOG_INFO, "Child %d exited with signal %d", pid, WTERMSIG(status));
+        service_t* service_clone = malloc(sizeof(service_t));
+        *service_clone = supervisor->services[service_index];
+        if (WTERMSIG(status) == SIGSEGV || WTERMSIG(status) == SIGBUS) {
+            syslog(LOG_INFO, "Child %d crashed with %d", pid, WTERMSIG(status));
+            int restart_times_left = supervisor->services[service_index].restart_times_left;
+            if (restart_times_left == 0) {
+                syslog(LOG_INFO, "No restarts left for service %s", service_clone->service_name);
+                return;
+            }
+            syslog(LOG_INFO, "Restarting service %s", service_clone->service_name);
+            pid_t* new_pid = malloc(sizeof(pid_t));
+            supervisor_create_service_wrapper(supervisor, service_clone->service_name, service_clone->program_path,
+                                              service_clone->argv, service_clone->argc, service_clone->restart_times_left - 1, new_pid);
+            syslog(LOG_INFO, "New pid %d", *new_pid);
+            free(new_pid);
+            free(service_clone);
+        } else {
+            syslog(LOG_INFO, "Child %d terminated with signal %d", pid, WTERMSIG(status));
         }
-        char *response = malloc(256 * sizeof(char));
-        process_commands(client_socket, response);
-        write(client_socket, response, strlen(response));
-        free(response);
-        close(client_socket);
+    } else if (WIFSTOPPED(status)) {
+        syslog(LOG_INFO, "Child %d stopped with signal %d", pid, WSTOPSIG(status));
+        supervisor->services[service_index].status = SUPERVISOR_STATUS_STOPPED;
+    } else if (WIFCONTINUED(status)) {
+        syslog(LOG_INFO, "Child %d continued", pid);
+        supervisor->services[service_index].status = SUPERVISOR_STATUS_RUNNING;
+    } else {
+        syslog(LOG_INFO, "Child %d exited with unknown status %d", pid, status);
+        supervisor_remove_service_wrapper(supervisor, pid);
     }
-
-    close(server_socket);
-    unlink(SOCKET_PATH);
-    syslog(LOG_NOTICE, "Supervisor daemon terminated");
-
-    closelog();
-
-    return 0;
 }

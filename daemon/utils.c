@@ -30,6 +30,15 @@ char* format_service_name(const char *service_name, pid_t pid, time_t start_time
     return format_str;
 }
 
+pid_t extract_pid_from_formatted_service_name(const char* formatted_service_name) {
+    char *service_name = malloc(strlen(formatted_service_name) + 1);
+    pid_t pid;
+    char *time_str = malloc(strlen(formatted_service_name) + 1);
+    parse_formatted_service_name(formatted_service_name, service_name, &pid, time_str);
+    free(service_name);
+    free(time_str);
+    return pid;
+}
 
 void parse_formatted_service_name(const char* formatted_service_name, char *service_name, pid_t *pid, char *time_str) {
     char *token;

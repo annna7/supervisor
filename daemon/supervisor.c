@@ -2,6 +2,7 @@
 #include <syslog.h>
 #include <string.h>
 #include <stdio.h>
+#include <time.h>
 #include "supervisor.h"
 
 supervisor_t* supervisors[MAX_SUPERVIORS] = {NULL};
@@ -48,6 +49,18 @@ int supervisor_close(supervisor_t* supervisor) {
     if (!supervisor) {
         return -1;
     }
+    const char *** service_names = malloc(sizeof(char**));
+    unsigned int * count = malloc(sizeof(unsigned int));
+
+    supervisor_list(supervisor, service_names, count);
+
+    // convert service_names to pid_array
+    pid_t * pid_array = malloc(sizeof(pid_t) * *count);
+    for (int i = 0; i < *count; i++) {
+        pid_array[i] = extract_pid_from_formatted_service_name((*service_names)[i]);
+    }
+
+    // TODO: close all services first (freelist)
     supervisors[supervisor->instance] = NULL;
     free(supervisor);
     return 0;
@@ -63,37 +76,86 @@ int supervisor_create_service_wrapper(supervisor_t* supervisor, const char * ser
         return -1;
     }
 
-    syslog(LOG_INFO, "service_create called with service_name: %s, program_path: %s, argc: %d, flags: %d", service_name, program_path, argc, flags);
-    for(int i = 0; i < argc; i++) {
-        syslog(LOG_INFO, "argv[%d]: %s", i, argv[i]);
-    }
-
-    service_t new_service = service_create(service_name, program_path, argv, argc, flags);
+    service_t new_service = service_create(service_name, program_path, argv, argc, flags, time(NULL));
     if (new_service.service_name == NULL) {
         syslog(LOG_ERR, "Failed to create service");
         return -1;
     }
-    syslog(LOG_INFO, "%s\n", new_service.service_name);
+    syslog(LOG_INFO, "%s\n", new_service.formatted_service_name);
     supervisor->services[i] = new_service;
     *new_pid = new_service.pid;
     return 0;
 }
 
-int supervisor_close_service_wrapper(supervisor_t* supervisor, pid_t pid) {
+service_t supervisor_open_service_wrapper(supervisor_t* supervisor, pid_t pid) {
+    if (!supervisor) {
+        return get_empty_service();
+    }
+    int i = get_free_service_index(supervisor);
+    if (i == -1) {
+        syslog(LOG_ERR, "No space for new service");
+        return get_empty_service();
+    }
+    service_t new_service = service_open(pid);
+    if (new_service.service_name == NULL) {
+        syslog(LOG_ERR, "Failed to open service");
+        return get_empty_service();
+    }
+    supervisor->services[i] = new_service;
+    return new_service;
+}
+
+int supervisor_remove_service_wrapper(supervisor_t* supervisor, pid_t pid) {
     if (!supervisor) {
         return -1;
     }
-    syslog(LOG_INFO, "supervisor_close_service_wrapper called with pid: %d", pid);
-    syslog(LOG_INFO, "supervisor->instance: %d", supervisor->instance);
-    for (int i = 0; i < MAX_SERVICES_PER_INSTANCE; i++) {
-        if (supervisor->services[i].pid == pid) {
-            service_close(supervisor->services[i]);
-            free((char*) supervisor->services[i].formatted_service_name);
-            supervisor->services[i] = get_empty_service();
-            return 0;
+    int i = get_service_index_from_pid(supervisor, pid);
+    if (i == -1) {
+        syslog(LOG_ERR, "Service %d not found", pid);
+        return -1;
+    }
+    free((char*) supervisor->services[i].formatted_service_name);
+    supervisor->services[i] = get_empty_service();
+    return 0;
+}
+
+int supervisor_send_command_to_existing_service_wrapper(supervisor_t* supervisor, pid_t pid, int command) {
+    if (!supervisor) {
+        return -1;
+    }
+    int i = get_service_index_from_pid(supervisor, pid);
+    if (i == -1) {
+        syslog(LOG_ERR, "Service %d not found", pid);
+        return -1;
+    }
+    switch (command) {
+        case KILL_SERVICE:
+            return service_kill(supervisor->services[i]);
+        case STATUS_SERVICE:
+            return service_status(supervisor->services[i]);
+        case SUSPEND_SERVICE:
+            return service_suspend(supervisor->services[i]);
+        case RESUME_SERVICE:
+            return service_resume(supervisor->services[i]);
+        case CANCEL_SERVICE:
+            return service_cancel(supervisor->services[i]);
+        default:
+            syslog(LOG_ERR, "Invalid command %d", command);
+            return -1;
+    }
+}
+
+int get_supervisor_instance_from_service_pid(pid_t pid) {
+    for (int i = 0; i < MAX_SUPERVIORS; i++) {
+        if (supervisors[i]) {
+            for (int j = 0; j < MAX_SERVICES_PER_INSTANCE; j++) {
+                if (supervisors[i]->services[j].pid == pid) {
+                    return i;
+                }
+            }
         }
     }
-    return 0;
+    return -1;
 }
 
 int get_free_service_index(supervisor_t *supervisor) {
@@ -107,10 +169,12 @@ int get_free_service_index(supervisor_t *supervisor) {
 
 int supervisor_list(supervisor_t* supervisor, const char *** service_names, unsigned int * count) {
     if (!supervisor) {
+        syslog(LOG_ERR, "supervisor_list: supervisor is NULL");
         return -1;
     }
     *service_names = malloc(sizeof(char*) * MAX_SERVICES_PER_INSTANCE);
     if (!*service_names) {
+        syslog(LOG_ERR, "malloc failed");
         return -1;
     }
     *count = 0;
@@ -125,19 +189,30 @@ int supervisor_list(supervisor_t* supervisor, const char *** service_names, unsi
     return 0;
 }
 
-int supervisor_freelist(supervisor_t* supervisor, const char ** service_names, int count) {
+int supervisor_freelist(supervisor_t* supervisor, pid_t* pid_array, int count) {
     if (!supervisor) {
         return -1;
     }
-    // TODO: This should be done from the CLI
-//    if (supervisors[supervisor->instance] != supervisor) {
-//        return -1;
-//    }
+
     for (int i = 0; i < count; i++) {
-        // TODO: check if service_names[i] is in supervisor->services
-        // TODO: close service
-        // TODO: remove service from supervisor->services
-        // TODO: free service_names[i]
+        int index = get_service_index_from_pid(supervisor, pid_array[i]);
+        if (index == -1) {
+            syslog(LOG_ERR, "supervisor_freelist: service %d not found", pid_array[i]);
+            return -1;
+        }
+//        supervisor_send_command_to_existing_service_wrapper(supervisor, pid_array[i], REMOVE_SERVICE);
+        supervisor_remove_service_wrapper(supervisor, pid_array[i]);
     }
+
+    free(pid_array);
     return 0;
+}
+
+int get_service_index_from_pid(supervisor_t* supervisor, pid_t pid) {
+    for (int i = 0; i < MAX_SERVICES_PER_INSTANCE; i++) {
+        if (supervisor->services[i].pid == pid) {
+            return i;
+        }
+    }
+    return -1;
 }

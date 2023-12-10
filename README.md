@@ -4,6 +4,7 @@
 
 * cli - command line interface
 * daemon - daemon process
+* parrot_service - service that writes to a file every 2 secs
 
 The two communicate via a unix socket, with the cli sending the commands received to the daemon.
 
@@ -23,13 +24,24 @@ The two communicate via a unix socket, with the cli sending the commands receive
 ### Logs
 `journalctl -u supervisor -n 10` - show last 10 commands
 
+### Run application
+* `cd build`
+* `cmake ..`
+* `make`
+* executables and parrot log.txt file are in `build/bin`
+
 ## TODO
-* supervisor-list
-* handle pid/service_name 
-* service_open
-* handle status for services
-* polling mechanism
-* handle service restarts
-* implement a clean interface for sending similar signals
-* concurrency?
+* polling mechanism pt open
+* opened/created services discriminator
+* concurrency - tb thread uri la ceva?
 * ordonat printre loguri!
+* ordonat printre erori (gen service.service_name in loc de service.pid)
+* library?
+
+## testat
+* supervisor free list
+* flags
+* service open
+* status
+* resume
+* restarts

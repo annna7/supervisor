@@ -13,6 +13,7 @@ long get_ticks_per_second() {
     return sysconf(_SC_CLK_TCK);
 }
 
+// TODO: why is this returning the wrong date?
 time_t get_process_start_time(pid_t pid) {
     char path[40], buffer[1024];
     sprintf(path, "/proc/%d/stat", pid);
