@@ -5,7 +5,6 @@
 #include <unistd.h>
 #include <signal.h>
 #include <sys/stat.h>
-#include <sys/wait.h>
 #include <syslog.h>
 #include <stdbool.h>
 #include <getopt.h>
@@ -224,6 +223,55 @@ void parse_command_arguments(char *command_str, char *response_str) {
 
             supervisor_send_command_to_existing_service_wrapper(supervisor, pid, KILL_SERVICE);
             strcpy(response_str, "Service closed");
+        } else if (strcmp(command, "remove-service") == 0) {
+            if (optind + 1 > number_of_tokens) {
+                strcpy(response_str, "Not enough arguments for remove-service");
+                return;
+            }
+            pid_t pid = atoi(command_tokens[optind++]);
+            supervisor_t* supervisor = supervisor_get(options.instance);
+            if (supervisor == NULL) {
+                strcpy(response_str, "Invalid supervisor instance");
+                return;
+            }
+
+            supervisor_remove_service_wrapper(supervisor, pid);
+            strcpy(response_str, "Service removed");
+        } else if (strcmp(command, "suspend-service") == 0) {
+            if (optind + 1 > number_of_tokens) {
+                strcpy(response_str, "Not enough arguments for suspend-service");
+                return;
+            }
+            pid_t pid = atoi(command_tokens[optind++]);
+            supervisor_t* supervisor = supervisor_get(options.instance);
+            if (supervisor == NULL) {
+                strcpy(response_str, "Invalid supervisor instance");
+                return;
+            }
+
+            // TODO: error handling with if's in the other calls
+            if (supervisor_send_command_to_existing_service_wrapper(supervisor, pid, SUSPEND_SERVICE) == 0) {
+                strcpy(response_str, "Service successfully suspended!");
+            } else {
+                strcpy(response_str, "Encountered error while suspending service!");
+            }
+        } else if (strcmp(command, "resume-service") == 0) {
+            if (optind + 1 > number_of_tokens) {
+                strcpy(response_str, "Not enough arguments for resume-service");
+                return;
+            }
+            pid_t pid = atoi(command_tokens[optind++]);
+            supervisor_t* supervisor = supervisor_get(options.instance);
+            if (supervisor == NULL) {
+                strcpy(response_str, "Invalid supervisor instance");
+                return;
+            }
+
+            if (supervisor_send_command_to_existing_service_wrapper(supervisor, pid, RESUME_SERVICE) == 0) {
+                strcpy(response_str, "Service successfully resumed!");
+            } else {
+                strcpy(response_str, "Encountered error while resuming service!");
+            }
         } else if (strcmp(command, "list-supervisor") == 0) {
             unsigned int *count = malloc(sizeof(unsigned int));
             const char ***service_names = malloc(sizeof(char **));

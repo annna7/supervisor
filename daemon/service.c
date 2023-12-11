@@ -159,7 +159,8 @@ int service_suspend(service_t service) {
 
     if (service.status == SUPERVISOR_STATUS_RUNNING) {
         service.status = SUPERVISOR_STATUS_STOPPED;
-        kill(service.pid, SIGTSTP);
+        kill(service.pid, SIGSTOP);
+        // TODO: check if the service is actually stopped (proc/pid/status ?)
         syslog(LOG_INFO, "Service %d was successfully suspended!", service.pid);
         return 0;
     } else {

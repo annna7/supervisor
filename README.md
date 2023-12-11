@@ -37,11 +37,12 @@ The two communicate via a unix socket, with the cli sending the commands receive
 * ordonat printre loguri!
 * ordonat printre erori (gen service.service_name in loc de service.pid)
 * library?
+* nu O(n^2) eventual
 
 ## testat
 * supervisor free list
 * flags
-* service open
+* service open (merge)
 * status
 * resume
 * restarts

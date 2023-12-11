@@ -106,13 +106,13 @@ service_t supervisor_open_service_wrapper(supervisor_t* supervisor, pid_t pid) {
 }
 
 int supervisor_remove_service_wrapper(supervisor_t* supervisor, pid_t pid) {
-    syslog(LOG_INFO, "Removing service %d", pid);
+//    syslog(LOG_INFO, "Removing service %d", pid);
     if (!supervisor) {
         return -1;
     }
     int i = get_service_index_from_pid(supervisor, pid);
     if (i == -1) {
-        syslog(LOG_ERR, "Service %d not found", pid);
+//        syslog(LOG_ERR, "Service %d not found", pid);
         return -1;
     }
     free((char*) supervisor->services[i].formatted_service_name);
@@ -132,16 +132,19 @@ int supervisor_send_command_to_existing_service_wrapper(supervisor_t* supervisor
     switch (command) {
         case KILL_SERVICE: {
             supervisor_remove_service_wrapper(supervisor, pid);
-            int res = service_kill(supervisor->services[i]);
-            return res;
+            return service_kill(supervisor->services[i]);
         }
         case STATUS_SERVICE:
             return service_status(supervisor->services[i]);
-        case SUSPEND_SERVICE:
-            return service_suspend(supervisor->services[i]);
+        case SUSPEND_SERVICE: {
+            int res = service_suspend(supervisor->services[i]);
+            syslog(LOG_INFO, "Service %d suspended with %d", pid, res);
+            return res;
+        }
         case RESUME_SERVICE:
             return service_resume(supervisor->services[i]);
         case CANCEL_SERVICE:
+            // TODO: pending
             return service_cancel(supervisor->services[i]);
         default:
             syslog(LOG_ERR, "Invalid command %d", command);
