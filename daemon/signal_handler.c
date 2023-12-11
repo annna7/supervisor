@@ -25,16 +25,19 @@ void handle_sigchld(int sig, siginfo_t *siginfo, void *context) {
         return;
     }
 
+    syslog(LOG_INFO, "Service from instance %d, index %d", supervisor->instance, service_index);
     if (WIFEXITED(status)) {
         syslog(LOG_INFO, "Child %d exited normally with status %d", pid, WEXITSTATUS(status));
         supervisor_remove_service_wrapper(supervisor, pid);
+//        supervisor_send_command_to_existing_service_wrapper(supervisor, pid, REMOVE_SERVICE);
+        // TODO: remove the service from supervisor or modify its status to KILLED?
     } else if (WIFSIGNALED(status)) {
         syslog(LOG_INFO, "Child %d exited with signal %d", pid, WTERMSIG(status));
         service_t* service_clone = malloc(sizeof(service_t));
         *service_clone = supervisor->services[service_index];
-        supervisor_remove_service_wrapper(supervisor, pid);
+        syslog(LOG_INFO, "Signal was %d", WTERMSIG(status));
         if (WTERMSIG(status) == SIGSEGV || WTERMSIG(status) == SIGBUS) {
-            syslog(LOG_INFO, "Child %d crashed", pid, WTERMSIG(status));
+            syslog(LOG_INFO, "Child %d crashed with %d", pid, WTERMSIG(status));
             int restart_times_left = supervisor->services[service_index].restart_times_left;
             if (restart_times_left == 0) {
                 syslog(LOG_INFO, "No restarts left for service %s", service_clone->service_name);
@@ -49,6 +52,7 @@ void handle_sigchld(int sig, siginfo_t *siginfo, void *context) {
             free(service_clone);
         } else {
             syslog(LOG_INFO, "Child %d terminated with signal %d", pid, WTERMSIG(status));
+            supervisor_remove_service_wrapper(supervisor, pid);
         }
     } else if (WIFSTOPPED(status)) {
         syslog(LOG_INFO, "Child %d stopped with signal %d", pid, WSTOPSIG(status));

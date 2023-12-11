@@ -29,7 +29,6 @@ service_t service_open(pid_t pid);
 // TODO: should killed services be automatically removed from supervisor?
 int service_kill(service_t service);
 // remove service from supervisor
-int service_remove(service_t service);
 // RUNNING - the OS can schedule it
 // PENDING - hasn't started yet (potentially add scheduling option)
 // STOPPED - the OS can't schedule it, but can be resumed (service_suspend, service_resume)

@@ -106,6 +106,7 @@ service_t supervisor_open_service_wrapper(supervisor_t* supervisor, pid_t pid) {
 }
 
 int supervisor_remove_service_wrapper(supervisor_t* supervisor, pid_t pid) {
+    syslog(LOG_INFO, "Removing service %d", pid);
     if (!supervisor) {
         return -1;
     }
@@ -129,8 +130,11 @@ int supervisor_send_command_to_existing_service_wrapper(supervisor_t* supervisor
         return -1;
     }
     switch (command) {
-        case KILL_SERVICE:
-            return service_kill(supervisor->services[i]);
+        case KILL_SERVICE: {
+            supervisor_remove_service_wrapper(supervisor, pid);
+            int res = service_kill(supervisor->services[i]);
+            return res;
+        }
         case STATUS_SERVICE:
             return service_status(supervisor->services[i]);
         case SUSPEND_SERVICE:
