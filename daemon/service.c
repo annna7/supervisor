@@ -80,91 +80,91 @@ service_t service_create(const char * service_name, const char * program_path, c
     return service;
 }
 
-int service_kill(service_t service) {
-    if (!service.pid) {
+int service_kill(service_t *service) {
+    if (!service->pid) {
         syslog(LOG_ERR, "No such service");
         return -1;
     }
 
     // assert that service is not pending
-    if (service.status == SUPERVISOR_STATUS_PENDING) {
+    if (service->status == SUPERVISOR_STATUS_PENDING) {
         syslog(LOG_ERR, "Service is pending and cannot be killed. Use service-cancel instead!");
         return -1;
     }
 
-    syslog(LOG_INFO, "Killing service %s", service.formatted_service_name);
+    syslog(LOG_INFO, "Killing service %s", service->formatted_service_name);
 
-    kill(service.pid, SIGKILL);
+    kill(service->pid, SIGKILL);
 
     int status;
     // deal with zombie processes and deallocate resources
-    waitpid(service.pid, &status, 0);
-    syslog(LOG_INFO, "Service %s killing", service.formatted_service_name);
-    service.status = SUPERVISOR_STATUS_KILLED;
+    waitpid(service->pid, &status, 0);
+    syslog(LOG_INFO, "Service %s killing", service->formatted_service_name);
+    service->status = SUPERVISOR_STATUS_KILLED;
 
     return 0;
 }
 
-int service_status(service_t service) {
-    if (!service.pid) {
+int service_status(service_t* service) {
+    if (!service->pid) {
         syslog(LOG_ERR, "No such service");
         return -1;
     }
-    return service.status;
+    return service->status;
 }
 
 // TODO: handle scheduling?
-int service_cancel(service_t service) {
-    if (!service.pid) {
+int service_cancel(service_t *service) {
+    if (!service->pid) {
         syslog(LOG_ERR, "No such service");
         return -1;
     }
 
-    if (service.status == SUPERVISOR_STATUS_PENDING) {
-        service.status = SUPERVISOR_STATUS_STOPPED;
-        syslog(LOG_INFO, "Service %d was successfully cancelled!", service.pid);
+    if (service->status == SUPERVISOR_STATUS_PENDING) {
+        service->status = SUPERVISOR_STATUS_STOPPED;
+        syslog(LOG_INFO, "Service %d was successfully cancelled!", service->pid);
         return 0;
     } else {
-        syslog(LOG_INFO, "Service %d isn't pending and can't be cancelled, use service-kill instead!", service.pid);
+        syslog(LOG_INFO, "Service %d isn't pending and can't be cancelled, use service-kill instead!", service->pid);
         return -1;
     }
 }
 
-int service_resume(service_t service) {
-    if (!service.pid) {
+int service_resume(service_t *service) {
+    if (!service->pid) {
         syslog(LOG_ERR, "No such service");
         return -1;
     }
 
-    if (service.status == SUPERVISOR_STATUS_PENDING) {
+    if (service->status == SUPERVISOR_STATUS_PENDING) {
         // TODO: handle scheduling?
         syslog(LOG_ERR, "Don't know how to handle scheduling yet!");
         return -1;
-    } else if (service.status == SUPERVISOR_STATUS_STOPPED) {
-        service.status = SUPERVISOR_STATUS_RUNNING;
-        kill(service.pid, SIGCONT);
-        syslog(LOG_INFO, "Service %d was successfully resumed!", service.pid);
+    } else if (service->status == SUPERVISOR_STATUS_STOPPED) {
+        service->status = SUPERVISOR_STATUS_RUNNING;
+        kill(service->pid, SIGCONT);
+        syslog(LOG_INFO, "Service %d was successfully resumed!", service->pid);
         return 0;
     } else {
-        syslog(LOG_INFO, "Service %d isn't stopped and can't be resumed!", service.pid);
+        syslog(LOG_INFO, "Service %d isn't stopped and can't be resumed!", service->pid);
         return -1;
     }
 }
 
-int service_suspend(service_t service) {
-    if (!service.pid) {
+int service_suspend(service_t *service) {
+    if (!service->pid) {
         syslog(LOG_ERR, "No such service");
         return -1;
     }
 
-    if (service.status == SUPERVISOR_STATUS_RUNNING) {
-        service.status = SUPERVISOR_STATUS_STOPPED;
-        kill(service.pid, SIGSTOP);
+    if (service->status == SUPERVISOR_STATUS_RUNNING) {
+        service->status = SUPERVISOR_STATUS_STOPPED;
+        kill(service->pid, SIGSTOP);
         // TODO: check if the service is actually stopped (proc/pid/status ?)
-        syslog(LOG_INFO, "Service %d was successfully suspended!", service.pid);
+        syslog(LOG_INFO, "Service %d was successfully suspended!", service->pid);
         return 0;
     } else {
-        syslog(LOG_INFO, "Service %d isn't running and can't be suspended!", service.pid);
+        syslog(LOG_INFO, "Service %d isn't running and can't be suspended!", service->pid);
         return -1;
     }
 }
