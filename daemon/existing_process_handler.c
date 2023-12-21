@@ -5,9 +5,7 @@
 #include <linux/limits.h>
 #include <fcntl.h>
 #include "existing_process_handler.h"
-
-#define MAX_ARG_LEN 1024
-#define MAX_ARGS 128
+#include "constants.h"
 
 long get_ticks_per_second() {
     return sysconf(_SC_CLK_TCK);

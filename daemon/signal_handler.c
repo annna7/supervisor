@@ -1,9 +1,9 @@
 #include <fcntl.h>
-#include <sys/syslog.h>
 #include <sys/wait.h>
 #include <stdlib.h>
 #include "signal_handler.h"
 #include "supervisor.h"
+#include "constants.h"
 
 // TODO: verify that child service was not removed from supervisor monitoring and proper exception handling
 // TODO: how to show logs? create pipe and read from it? (syslog not async-signal-safe)

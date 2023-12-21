@@ -83,6 +83,7 @@ int supervisor_create_service_wrapper(supervisor_t* supervisor, const char * ser
     }
     syslog(LOG_INFO, "%s\n", new_service.formatted_service_name);
     supervisor->services[i] = new_service;
+    syslog(LOG_INFO, "Just created service with pid %d and status %d", supervisor->services[i].pid, supervisor->services[i].status);
     *new_pid = new_service.pid;
     return 0;
 }
@@ -112,7 +113,7 @@ int supervisor_remove_service_wrapper(supervisor_t* supervisor, pid_t pid) {
     }
     int i = get_service_index_from_pid(supervisor, pid);
     if (i == -1) {
-//        syslog(LOG_ERR, "Service %d not found", pid);
+        syslog(LOG_ERR, "Service %d not found", pid);
         return -1;
     }
     free((char*) supervisor->services[i].formatted_service_name);
@@ -131,8 +132,11 @@ int supervisor_send_command_to_existing_service_wrapper(supervisor_t* supervisor
     }
     switch (command) {
         case KILL_SERVICE: {
-            supervisor_remove_service_wrapper(supervisor, pid);
-            return service_kill(&supervisor->services[i]);
+            int error = service_kill(&supervisor->services[i]);
+            if (!error) {
+                return error;
+            }
+            return supervisor_remove_service_wrapper(supervisor, pid);
         }
         case STATUS_SERVICE:
             return service_status(&supervisor->services[i]);
@@ -150,6 +154,15 @@ int supervisor_send_command_to_existing_service_wrapper(supervisor_t* supervisor
             syslog(LOG_ERR, "Invalid command %d", command);
             return -1;
     }
+}
+
+int get_service_index_from_service_name(supervisor_t* supervisor, const char *formatted_service_name) {
+    for (int i = 0; i < MAX_SERVICES_PER_INSTANCE; ++i) {
+        if (strcmp(supervisor->services[i].formatted_service_name, formatted_service_name) == 0) {
+            return i;
+        }
+    }
+    return -1;
 }
 
 int get_supervisor_instance_from_service_pid(pid_t pid) {
@@ -207,7 +220,6 @@ int supervisor_freelist(supervisor_t* supervisor, pid_t* pid_array, int count) {
             syslog(LOG_ERR, "supervisor_freelist: service %d not found", pid_array[i]);
             return -1;
         }
-//        supervisor_send_command_to_existing_service_wrapper(supervisor, pid_array[i], REMOVE_SERVICE);
         supervisor_remove_service_wrapper(supervisor, pid_array[i]);
     }
 

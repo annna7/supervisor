@@ -11,6 +11,7 @@
 #include "utils.h"
 #include "supervisor.h"
 #include "signal_handler.h"
+#include "constants.h"
 
 #define SOCKET_PATH "/tmp/supervisor_daemon.sock"
 
@@ -20,6 +21,7 @@ typedef struct {
     int restart_times;
 } Options;
 
+pthread_mutex_t service_status_mutex; // TODO: put in code
 void daemonize();
 void process_commands(int client_socket, char *response);
 void parse_command_arguments(char *command_str, char *response_str);
@@ -255,6 +257,19 @@ void parse_command_arguments(char *command_str, char *response_str) {
             } else {
                 strcpy(response_str, "Encountered error while suspending service!");
             }
+        } else if (strcmp(command, "service-status") == 0) {
+            if (optind + 1 > number_of_tokens) {
+                strcpy(response_str, "Not enough arguments for service-status");
+                return;
+            }
+            pid_t pid = atoi(command_tokens[optind++]);
+            supervisor_t* supervisor = supervisor_get(options.instance);
+            if (supervisor == NULL) {
+                strcpy(response_str, "Invalid supervisor instance");
+                return;
+            }
+            int status = supervisor_send_command_to_existing_service_wrapper(supervisor, pid, STATUS_SERVICE);
+            append_service_status_to_string(status, response_str);
         } else if (strcmp(command, "resume-service") == 0) {
             if (optind + 1 > number_of_tokens) {
                 strcpy(response_str, "Not enough arguments for resume-service");
@@ -275,10 +290,20 @@ void parse_command_arguments(char *command_str, char *response_str) {
         } else if (strcmp(command, "list-supervisor") == 0) {
             unsigned int *count = malloc(sizeof(unsigned int));
             const char ***service_names = malloc(sizeof(char **));
-            supervisor_list(supervisor_get(options.instance), service_names, count);
+            supervisor_t *supervisor = supervisor_get(options.instance);
+            if (!supervisor) {
+                strcpy(response_str, "Invalid supervisor instance");
+                return;
+            }
+            supervisor_list(supervisor, service_names, count);
             strcpy(response_str, "List supervisor\n");
             for (int i = 0; i < *count; i++) {
+                const char *service_name = (*service_names)[i];
+                int service_index = get_service_index_from_service_name(supervisor, service_name);
                 strcat(response_str, (*service_names)[i]);
+                strcat(response_str, "  -  ");
+                int status = supervisor_send_command_to_existing_service_wrapper(supervisor, supervisor->services[service_index].pid, STATUS_SERVICE);
+                append_service_status_to_string(status, response_str);
                 strcat(response_str, "\n");
             }
             syslog(LOG_INFO, "list: %s", response_str);

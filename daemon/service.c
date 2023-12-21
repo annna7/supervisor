@@ -9,6 +9,7 @@
 #include "service.h"
 #include "existing_process_handler.h"
 #include "utils.h"
+#include "constants.h"
 
 // TODO: add discriminator for open/create
 // TODO: polling mechanism for open
@@ -37,6 +38,20 @@ service_t service_create(const char * service_name, const char * program_path, c
     syslog(LOG_INFO, "Creating service %s", service_name);
     syslog(LOG_INFO, "Program path %s", program_path);
     service_t service = get_empty_service();
+
+    service.status = SUPERVISOR_STATUS_PENDING;
+
+    // TODO: scheduling mechanism for pending services?
+    // TODO: wait(time)
+
+    if (flags & SUPERVISOR_FLAGS_CREATESTOPPED) {
+        service.status = SUPERVISOR_STATUS_STOPPED;
+        syslog(LOG_INFO, "Service %s will be created stopped", service_name);
+    } else {
+        service.status = SUPERVISOR_STATUS_RUNNING;
+        syslog(LOG_INFO, "%s %s %s", "Starting service", service_name, program_path);
+    }
+
     pid_t pid = fork();
     if (pid < 0) {
         syslog(LOG_ERR, "Failed to fork");
@@ -49,18 +64,10 @@ service_t service_create(const char * service_name, const char * program_path, c
             return get_empty_service();
         }
 
-        service.status = SUPERVISOR_STATUS_PENDING;
-        // TODO: scheduling mechanism for pending services?
-
-        syslog(LOG_INFO, "%s %s %s", "Starting service", service_name, program_path);
-
         if (flags & SUPERVISOR_FLAGS_CREATESTOPPED) {
-            syslog(LOG_INFO, "Service %s will be created stopped", service_name);
-            service.status = SUPERVISOR_STATUS_STOPPED;
             raise(SIGSTOP);
         }
 
-        service.status = SUPERVISOR_STATUS_RUNNING;
         execv(program_path, (char *const *) argv);
         syslog(LOG_ERR, "Failed to execv");
         syslog(LOG_ERR, "%d %s", errno, strerror(errno));
@@ -75,8 +82,8 @@ service_t service_create(const char * service_name, const char * program_path, c
     service.program_path = program_path;
     service.argv = argv;
     service.argc = argc;
-    service.restart_times_left = (flags & SUPERVISOR_FLAGS_RESTARTTIMES(0xF)) >> 16;
-
+    // TODO: fix restart times
+    service.restart_times_left = 0;
     return service;
 }
 

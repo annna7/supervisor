@@ -1,10 +1,10 @@
-#include "utils.h"
-
 #include <string.h>
 #include <stdlib.h>
 #include <time.h>
 #include <stdio.h>
 #include <sys/syslog.h>
+#include "utils.h"
+#include "constants.h"
 
 
 void parse_string(char *input_string, int* number_of_tokens, char **parsed_tokens) {
@@ -67,4 +67,27 @@ void parse_formatted_service_name(const char* formatted_service_name, char *serv
     }
 
     free(formatted_service_name_copy);
+}
+
+void append_service_status_to_string(int service_status, char *response_str) {
+    switch (service_status) {
+        case SUPERVISOR_STATUS_RUNNING: {
+            strcat(response_str, "Running");
+            break;
+        }
+        case SUPERVISOR_STATUS_PENDING: {
+            strcat(response_str, "Pending");
+            break;
+        }
+        case SUPERVISOR_STATUS_STOPPED: {
+            strcat(response_str, "Stopped");
+            break;
+        }
+        case SUPERVISOR_STATUS_KILLED: {
+            strcat(response_str, "Killed");
+            break;
+        }
+        default:
+            strcat(response_str, "Unknown status");
+    }
 }

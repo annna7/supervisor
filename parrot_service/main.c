@@ -17,9 +17,9 @@ int main(int argc, char *argv[]) {
 	return 1;
     }
     for (int i = 0; i < 100; ++i) {
-	fprintf(log_file, "%d, %s\n", i, message);
-	fflush(log_file);
-	sleep(2);
+	    fprintf(log_file, "%d, %s\n", i, message);
+	    fflush(log_file);
+	    sleep(2);
     }
     fclose(log_file);
    // int i = 0;

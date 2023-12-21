@@ -22,28 +22,27 @@ The cli and daemon communicate via a unix socket, with the cli sending the comma
 
 
 ### Logs
-`journalctl -u supervisor -n 10` - show last 10 commands
+`journalctl -t supervisor -n 10` - show last 10 commands
 
 ### Run application
-* `cd build`
+* `cd build`s
 * `cmake ..`
 * `make`
-* executables and parrot log.txt file are in `build/bin`
+* executables and parrot log.txt file are in `build/bin, so `cd bin`
 * start daemon with `./daemon`
 * run `cli` commands (from usage section)
 
 ## TODO
-* create simple program with segmentation fault (e.g. acceseaza null pointer dupa 1000s)
-* restart logic (e scris ceva dar nu e testat + tb. scoase fct. async unsafe din signal handling precum syslog)
-* testat create-stopped
-* testat status-uri si stabilit exact tranzitiile 
-* polling mechanism pt open (nu va merge SIGCHILD) - ce feature-uri vrem pt ele mai exact?
-* opened/created services discriminator
-* dupa ce se termina un service (sau e omorat), mai apare in lista de servicii?
-* concurrency - tb thread uri la ceva?
-* ordonat printre loguri!
-* ordonat printre erori
-* ce se vrea mai exact cu cancel si pending? schedule jobs??
-* library?
-* terminat documentatia
-* release github
+* Add mutex throughout the code, whenever `status` is queried/updated (1)
+* Create a simple toy program with predictable segmentation fault - access null pointer after 1000s (1)
+* Restart logic only for created by user programs - handle async unsafe stuff (2)
+* Add discriminator for opened/created by user services and update throughout the code (1)
+* Polling mechanism for open - for loop in another thread that sends signal zero to opened services and updates (with mutex) their status -> everything except the flags should work (3)
+* Create custom errors (2)
+* Print result of each command for user to see - use global result string, probably remove existing char *response from function signatures (3)
+* Tidy up logs! (2)
+* Documentation (2)
+* Release (1)
+* Fix date bug in existing process handler (1)
+* Refactor code in daemon.c for command handling - create new file `command-parser.c` and each cli call should be a separate function (so you can call them), like for status (2)
+* scheduling (cli option to wait x seconds, nice to have - for testing cancel) (2)

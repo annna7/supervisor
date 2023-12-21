@@ -2,14 +2,8 @@
 #define SUPERVISOR_SUPERVISOR_H
 
 #include "service.h"
+#include "constants.h"
 #include "utils.h"
-
-#define KILL_SERVICE 1
-#define REMOVE_SERVICE 2
-#define STATUS_SERVICE 3
-#define SUSPEND_SERVICE 4
-#define RESUME_SERVICE 5
-#define CANCEL_SERVICE 6
 
 typedef struct {
     int instance;
@@ -22,6 +16,7 @@ service_t supervisor_open_service_wrapper(supervisor_t* supervisor, pid_t pid);
 void list_supervisors();
 int get_supervisor_instance_from_service_pid(pid_t pid);
 int get_service_index_from_pid(supervisor_t* supervisor, pid_t pid);
+int get_service_index_from_service_name(supervisor_t* supervisor, const char *formatted_service_name);
 int get_free_service_index(supervisor_t *supervisor);
 int supervisor_close(supervisor_t*);
 int supervisor_list(supervisor_t* supervisor, const char *** service_names, unsigned int * count);
