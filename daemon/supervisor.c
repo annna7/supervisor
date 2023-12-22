@@ -60,7 +60,7 @@ int supervisor_close(supervisor_t* supervisor) {
         pid_array[i] = extract_pid_from_formatted_service_name((*service_names)[i]);
     }
 
-    // TODO: close all services first (freelist)
+    supervisor_freelist(supervisor, pid_array, (int) *count);
     supervisors[supervisor->instance] = NULL;
     free(supervisor);
     return 0;

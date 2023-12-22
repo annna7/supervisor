@@ -318,8 +318,7 @@ void parse_command_arguments(char *command_str, char *response_str) {
                 return;
             }
 
-            int instance = atoi(command_tokens[optind++]);
-            supervisor_t* supervisor = supervisor_get(instance);
+            supervisor_t* supervisor = supervisor_get(options.instance);
             if (supervisor == NULL) {
                 strcpy(response_str, "Invalid supervisor instance");
                 return;
@@ -329,6 +328,10 @@ void parse_command_arguments(char *command_str, char *response_str) {
             pid_t* pid_array = malloc(count * sizeof(pid_t));
             for (int i = 0; i < count; i++) {
                 pid_array[i] = atoi(command_tokens[optind++]);
+            }
+
+            for (int i = 0; i < count; ++i) {
+                syslog(LOG_INFO, "pid_array[%d] = %d", i, pid_array[i]);
             }
 
             supervisor_freelist(supervisor, pid_array, count);
@@ -355,8 +358,6 @@ void process_commands(int client_socket, char *response) {
 
     parse_command_arguments(buffer, response);
 
-    printf("Received %s\n", buffer);
-    printf("Response %s\n", response);
     syslog(LOG_INFO, "Received command: %s", buffer);
     syslog(LOG_INFO, "Response: %s", response);
 }
