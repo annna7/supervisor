@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <time.h>
 #include "supervisor.h"
-
+#include "global_state.h"
 supervisor_t* supervisors[MAX_SUPERVIORS] = {NULL};
 
 void list_supervisors() {
@@ -12,6 +12,9 @@ void list_supervisors() {
     printf("list_supervisors\n");
     for (int i = 0; i < MAX_SUPERVIORS; i++) {
         if (supervisors[i]) {
+            char  response[RESPONSE_STR_SIZE] ;
+            sprintf(response, "Supervisor%d\n", i);
+            strcat(global_response_str, response);
             printf("%d\n", i);
             syslog(LOG_INFO, "supervisor %d", i);
         }
