@@ -25,7 +25,7 @@ The cli and daemon communicate via a unix socket, with the cli sending the comma
 `journalctl -t supervisor -n 10` - show last 10 commands
 
 ### Run application
-* `cd build`s
+* `cd build`
 * `cmake ..`
 * `make`
 * executables and parrot log.txt file are in `build/bin, so `cd bin`

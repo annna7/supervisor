@@ -8,10 +8,12 @@
 #include <syslog.h>
 #include <stdbool.h>
 #include <getopt.h>
+#include <pthread.h>
 #include "utils.h"
 #include "supervisor.h"
 #include "signal_handler.h"
 #include "constants.h"
+#include "global_state.h"
 
 #define SOCKET_PATH "/tmp/supervisor_daemon.sock"
 
@@ -21,17 +23,37 @@ typedef struct {
     int restart_times;
 } Options;
 
+// pipe for communication between signal handler and main thread
+
+
+// we have a while (true) in main, but we still need to join threads etc. when the daemon is terminated
+// so, we use a global variable to control when termination happens and this way we can do the cleanup
 pthread_mutex_t service_status_mutex; // TODO: put in code
 void daemonize();
 void process_commands(int client_socket, char *response);
 void parse_command_arguments(char *command_str, char *response_str);
 
 int main() {
-    struct sigaction sa;
-    sa.sa_flags = SA_SIGINFO;
-    sa.sa_sigaction = handle_sigchld;
-    sigemptyset(&sa.sa_mask);
-    if (sigaction(SIGCHLD, &sa, NULL) == -1) {
+    struct sigaction sa_sig_term;
+    sa_sig_term.sa_flags = SA_SIGINFO;
+    sa_sig_term.sa_sigaction = handle_sigterm;
+    sigemptyset(&sa_sig_term.sa_mask);
+
+    if (sigaction(SIGTERM, &sa_sig_term, NULL) == -1) {
+        perror("sigaction");
+        return 1;
+    }
+
+    if (sigaction(SIGINT, &sa_sig_term, NULL) == -1) {
+        perror("sigaction");
+        return 1;
+    }
+
+    struct sigaction sa_sig_child;
+    sa_sig_child.sa_flags = SA_SIGINFO;
+    sa_sig_child.sa_sigaction = handle_sigchld;
+    sigemptyset(&sa_sig_child.sa_mask);
+    if (sigaction(SIGCHLD, &sa_sig_child, NULL) == -1) {
         perror("sigaction");
         return 1;
     }
@@ -67,7 +89,31 @@ int main() {
 
     syslog(LOG_NOTICE, "Supervisor daemon started");
 
-    while (true) {
+    // setting up the pipe for communication with the async signal handler
+    if (pipe(pipe_fd) == -1) {
+        perror("pipe");
+        exit(EXIT_FAILURE);
+    }
+
+    fcntl(pipe_fd[1], F_SETFL, O_NONBLOCK);
+    fcntl(pipe_fd[0], F_SETFL, O_NONBLOCK);
+
+    pthread_mutex_init(&pipe_mutex, NULL);
+
+    pthread_t signal_handler_thread;
+    if (pthread_create(&signal_handler_thread, NULL, sigchild_listener, NULL) != 0) {
+        perror("pthread_create");
+        exit(EXIT_FAILURE);
+    }
+
+    syslog(LOG_INFO, "created signal handler thread");
+
+//    if (pthread_create(&signal_handler_thread, NULL, sigchild_listener, NULL) != 0) {
+//        perror("pthread_create");
+//        exit(EXIT_FAILURE);
+//    }
+
+    while (keep_running) {
         client_socket = accept(server_socket, NULL, NULL);
         if (client_socket < 0) {
             perror("accept");
@@ -79,6 +125,8 @@ int main() {
         free(response);
         close(client_socket);
     }
+
+    pthread_join(signal_handler_thread, NULL);
 
     close(server_socket);
     unlink(SOCKET_PATH);
@@ -112,6 +160,11 @@ void parse_command_arguments(char *command_str, char *response_str) {
     }
 
     if (number_of_tokens == 1) {
+        if (strcmp(command, "get-response") == 0) {
+            strcpy(response_str, global_response_str);
+            strcpy(global_response_str, "");
+            return;
+        }
         if (strcmp(command, "list-supervisors") == 0) {
             strcpy(response_str, "List supervisors");
             list_supervisors();

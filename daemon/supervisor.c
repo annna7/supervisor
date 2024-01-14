@@ -9,10 +9,8 @@ supervisor_t* supervisors[MAX_SUPERVIORS] = {NULL};
 
 void list_supervisors() {
     syslog(LOG_INFO, "list_supervisors");
-    printf("list_supervisors\n");
     for (int i = 0; i < MAX_SUPERVIORS; i++) {
         if (supervisors[i]) {
-            printf("%d\n", i);
             syslog(LOG_INFO, "supervisor %d", i);
         }
     }
@@ -107,7 +105,6 @@ service_t supervisor_open_service_wrapper(supervisor_t* supervisor, pid_t pid) {
 }
 
 int supervisor_remove_service_wrapper(supervisor_t* supervisor, pid_t pid) {
-//    syslog(LOG_INFO, "Removing service %d", pid);
     if (!supervisor) {
         return -1;
     }

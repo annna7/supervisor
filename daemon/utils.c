@@ -2,10 +2,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <stdio.h>
-#include <sys/syslog.h>
 #include "utils.h"
-#include "constants.h"
-
 
 void parse_string(char *input_string, int* number_of_tokens, char **parsed_tokens) {
     char *token;

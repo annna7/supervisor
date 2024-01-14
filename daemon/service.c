@@ -128,7 +128,7 @@ int service_cancel(service_t *service) {
     }
 
     if (service->status == SUPERVISOR_STATUS_PENDING) {
-        service->status = SUPERVISOR_STATUS_STOPPED;
+        service->status = SUPERVISOR_STATUS_KILLED;
         syslog(LOG_INFO, "Service %d was successfully cancelled!", service->pid);
         return 0;
     } else {
