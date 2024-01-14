@@ -1,7 +1,6 @@
 #include <stdlib.h>
 #include <syslog.h>
 #include <string.h>
-#include <stdio.h>
 #include <time.h>
 #include "supervisor.h"
 
@@ -75,7 +74,7 @@ int supervisor_create_service_wrapper(supervisor_t* supervisor, const char * ser
     }
 
     service_t new_service = service_create(service_name, program_path, argv, argc, flags, time(NULL));
-    if (new_service.service_name == NULL) {
+    if (!new_service.pid) {
         syslog(LOG_ERR, "Failed to create service");
         return -1;
     }
@@ -96,7 +95,7 @@ service_t supervisor_open_service_wrapper(supervisor_t* supervisor, pid_t pid) {
         return get_empty_service();
     }
     service_t new_service = service_open(pid);
-    if (new_service.service_name == NULL) {
+    if (!new_service.pid) {
         syslog(LOG_ERR, "Failed to open service");
         return get_empty_service();
     }
@@ -113,7 +112,10 @@ int supervisor_remove_service_wrapper(supervisor_t* supervisor, pid_t pid) {
         syslog(LOG_ERR, "Service %d not found", pid);
         return -1;
     }
-    free((char*) supervisor->services[i].formatted_service_name);
+    for (int j = 0; j < supervisor->services[i].argc; j++) {
+        free((char*) supervisor->services[i].argv[j]);
+    }
+    free((char**) supervisor->services[i].argv);
     supervisor->services[i] = get_empty_service();
     return 0;
 }
@@ -177,7 +179,7 @@ int get_supervisor_instance_from_service_pid(pid_t pid) {
 
 int get_free_service_index(supervisor_t *supervisor) {
     for (int i = 0; i < MAX_SERVICES_PER_INSTANCE; i++) {
-        if (supervisor->services[i].service_name == NULL) {
+        if (supervisor->services[i].pid == 0) {
             return i;
         }
     }
@@ -196,7 +198,7 @@ int supervisor_list(supervisor_t* supervisor, const char *** service_names, unsi
     }
     *count = 0;
     for (int i = 0; i < MAX_SERVICES_PER_INSTANCE; i++) {
-        if (supervisor->services[i].service_name) {
+        if (supervisor->services[i].pid) {
             syslog(LOG_INFO, "supervisor_list: %s %d\n", supervisor->services[i].formatted_service_name, supervisor->services[i].pid);
             (*service_names)[*count] = malloc(sizeof(char) * (strlen(supervisor->services[i].formatted_service_name) + 1)); // +1 for the null terminator
             strcpy((*service_names)[*count], supervisor->services[i].formatted_service_name);

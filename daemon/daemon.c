@@ -95,8 +95,15 @@ int main() {
         exit(EXIT_FAILURE);
     }
 
-    fcntl(pipe_fd[1], F_SETFL, O_NONBLOCK);
-    fcntl(pipe_fd[0], F_SETFL, O_NONBLOCK);
+    if (fcntl(pipe_fd[1], F_SETFL, O_NONBLOCK) == -1) {
+        perror("fcntl");
+        exit(EXIT_FAILURE);
+    }
+
+    if (fcntl(pipe_fd[0], F_SETFL, O_NONBLOCK) == -1) {
+        perror("fcntl");
+        exit(EXIT_FAILURE);
+    }
 
     pthread_mutex_init(&pipe_mutex, NULL);
 
@@ -107,11 +114,6 @@ int main() {
     }
 
     syslog(LOG_INFO, "created signal handler thread");
-
-//    if (pthread_create(&signal_handler_thread, NULL, sigchild_listener, NULL) != 0) {
-//        perror("pthread_create");
-//        exit(EXIT_FAILURE);
-//    }
 
     while (keep_running) {
         client_socket = accept(server_socket, NULL, NULL);
@@ -359,7 +361,6 @@ void parse_command_arguments(char *command_str, char *response_str) {
                 append_service_status_to_string(status, response_str);
                 strcat(response_str, "\n");
             }
-            syslog(LOG_INFO, "list: %s", response_str);
             for (int i = 0; i < *count; i++) {
                 free((void *) (*service_names)[i]);
             }
@@ -381,10 +382,6 @@ void parse_command_arguments(char *command_str, char *response_str) {
             pid_t* pid_array = malloc(count * sizeof(pid_t));
             for (int i = 0; i < count; i++) {
                 pid_array[i] = atoi(command_tokens[optind++]);
-            }
-
-            for (int i = 0; i < count; ++i) {
-                syslog(LOG_INFO, "pid_array[%d] = %d", i, pid_array[i]);
             }
 
             supervisor_freelist(supervisor, pid_array, count);

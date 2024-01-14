@@ -80,8 +80,12 @@ void append_service_status_to_string(int service_status, char *response_str) {
             strcat(response_str, "Stopped");
             break;
         }
-        case SUPERVISOR_STATUS_KILLED: {
+        case SUPERVISOR_STATUS_TERMINATED: {
             strcat(response_str, "Killed");
+            break;
+        }
+        case SUPERVISOR_STATUS_CRASHED: {
+            strcat(response_str, "Crashed");
             break;
         }
         default:
