@@ -7,7 +7,7 @@
 #include "global_state.h"
 supervisor_t* supervisors[MAX_SUPERVIORS] = {NULL};
 
-void list_supervisors() {
+bool list_supervisors() {
     syslog(LOG_INFO, "list_supervisors");
     printf("list_supervisors\n");
     for (int i = 0; i < MAX_SUPERVIORS; i++) {
@@ -15,10 +15,12 @@ void list_supervisors() {
             char  response[RESPONSE_STR_SIZE] ;
             sprintf(response, "Supervisor%d\n", i);
             strcat(global_response_str, response);
-            printf("%d\n", i);
             syslog(LOG_INFO, "supervisor %d", i);
+            return true;
         }
     }
+    strcpy(global_response_str, "No supervisors currently\n");
+    return false;
 }
 
 supervisor_t* supervisor_init(int instance) {
@@ -45,13 +47,23 @@ supervisor_t* supervisor_get(int instance) {
     if (instance < 0 || instance >= MAX_SUPERVIORS) {
         return NULL;
     }
+    if(supervisors[instance] == NULL)
+    {
+        char  response[RESPONSE_STR_SIZE] ;
+        sprintf(response, "Supervisor %d does not exist\n", instance);
+        strcpy(global_response_str, response);
+    }
     return supervisors[instance];
 }
 
 int supervisor_close(supervisor_t* supervisor) {
     if (!supervisor) {
+
         return -1;
     }
+    char  response[RESPONSE_STR_SIZE] ;
+    sprintf(response, "Supervisor %d has been closed\n", supervisor->instance);
+    strcpy(global_response_str, response);
     const char *** service_names = malloc(sizeof(char**));
     unsigned int * count = malloc(sizeof(unsigned int));
 

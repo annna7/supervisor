@@ -13,7 +13,7 @@ typedef struct {
 supervisor_t* supervisor_init(int instance);
 supervisor_t* supervisor_get(int instance);
 service_t supervisor_open_service_wrapper(supervisor_t* supervisor, pid_t pid);
-void list_supervisors();
+bool list_supervisors();
 int get_supervisor_instance_from_service_pid(pid_t pid);
 int get_service_index_from_pid(supervisor_t* supervisor, pid_t pid);
 int get_service_index_from_service_name(supervisor_t* supervisor, const char *formatted_service_name);

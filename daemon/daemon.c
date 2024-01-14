@@ -166,10 +166,9 @@ void parse_command_arguments(char *command_str, char *response_str) {
             syslog(LOG_INFO, "Init supervisor %d", options.instance);
             supervisor_init(options.instance);
         } else if (strcmp(command, "list-supervisors") == 0) {
-            strcpy(global_response_str, "Supervisors:\n");
-            list_supervisors();
+            if(list_supervisors())
+                strcpy(global_response_str, "Supervisors:\n");
         } else if (strcmp(command, "close") == 0) {
-            strcpy(global_response_str, "Close");
             supervisor_close(supervisor_get(options.instance));
         } else if (strcmp(command, "create-service") == 0) {
             if (optind + 3 > number_of_tokens) {
