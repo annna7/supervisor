@@ -5,7 +5,7 @@
 #include <signal.h>
 #include <stdlib.h>
 #include <sys/wait.h>
-#include <uv/errno.h>
+#include <errno.h>
 #include "service.h"
 #include "existing_process_handler.h"
 #include "utils.h"
