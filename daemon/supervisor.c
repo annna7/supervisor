@@ -11,12 +11,6 @@ void list_supervisors() {
     bool are_supervisors = false;
     for (int i = 0; i < MAX_SUPERVISORS; i++) {
         if (supervisors[i]) {
-//            char *response = malloc(sizeof(char) * RESPONSE_STR_SIZE);
-//            char  response[RESPONSE_STR_SIZE] ;
-//            sprintf(response, "Supervisor %d\n", i);
-//            sprintf(global_response_str + strlen(global_response_str), "Supervisor %d\n", i);
-//            strcat(global_response_str, response);
-//            free(response);
             append_to_global_response_str("Supervisor %d\n", i);
             are_supervisors = true;
         }
@@ -31,6 +25,7 @@ supervisor_t* supervisor_init(int instance) {
         return NULL;
     }
     if (supervisors[instance]) {
+        append_to_global_response_str("Supervisor %d already initiated", instance);
         return NULL;
     }
     supervisor_t* supervisor = malloc(sizeof(supervisor_t));
@@ -42,6 +37,7 @@ supervisor_t* supervisor_init(int instance) {
     for (int i = 0; i < MAX_SERVICES_PER_INSTANCE; i++) {
         supervisor->services[i] = get_empty_service();
     }
+    append_to_global_response_str("Initiated supervisor with instance %d", instance);
     syslog(LOG_INFO, "%s %d", "supervisor_init", instance);
     return supervisor;
 }
@@ -51,15 +47,7 @@ supervisor_t* supervisor_get(int instance) {
         return NULL;
     }
     if(supervisors[instance] == NULL) {
-//        char  response[RESPONSE_STR_SIZE] ;
-//        sprintf(response, "Supervisor %d does not exist\n", instance);
-//        strcpy(global_response_str, response);
         append_to_global_response_str("Supervisor %d does not exist\n", instance);
-//        char *response = malloc(sizeof(char) * RESPONSE_STR_SIZE);
-//        sprintf(response, "Supervisor %d does not exist\n", instance);
-//        strcat(global_response_str, response);
-//        free(response);
-//        sprintf(global_response_str + strlen(global_response_str), "Supervisor %d does not exist\n", instance);
     }
     return supervisors[instance];
 }
@@ -70,15 +58,6 @@ int supervisor_close(supervisor_t* supervisor) {
     }
 
     append_to_global_response_str("Supervisor %d has been closed\n", supervisor->instance);
-//    char response[RESPONSE_STR_SIZE] ;
-//    sprintf(response, "Supervisor %d has been closed\n", supervisor->instance);
-//    strcpy(global_response_str, response);
-//    char *response = malloc(sizeof(char) * RESPONSE_STR_SIZE);
-//    sprintf(response, "Supervisor %d has been closed\n", supervisor->instance);
-//    strcat(global_response_str, response);
-//    free(response);
-//    sprintf(global_response_str + strlen(global_response_str), "Supervisor %d has been closed\n", supervisor->instance);
-//    global_response_str[strlen(global_response_str)] = '\0';
     const char *** service_names = malloc(sizeof(char**));
     unsigned int * count = malloc(sizeof(unsigned int));
 
