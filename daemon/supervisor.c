@@ -4,11 +4,11 @@
 #include <time.h>
 #include "supervisor.h"
 
-supervisor_t* supervisors[MAX_SUPERVIORS] = {NULL};
+supervisor_t* supervisors[MAX_SUPERVISORS] = {NULL};
 
 void list_supervisors() {
     syslog(LOG_INFO, "list_supervisors");
-    for (int i = 0; i < MAX_SUPERVIORS; i++) {
+    for (int i = 0; i < MAX_SUPERVISORS; i++) {
         if (supervisors[i]) {
             syslog(LOG_INFO, "supervisor %d", i);
         }
@@ -16,7 +16,7 @@ void list_supervisors() {
 }
 
 supervisor_t* supervisor_init(int instance) {
-    if (instance < 0 || instance >= MAX_SUPERVIORS) {
+    if (instance < 0 || instance >= MAX_SUPERVISORS) {
         return NULL;
     }
     if (supervisors[instance]) {
@@ -36,7 +36,7 @@ supervisor_t* supervisor_init(int instance) {
 }
 
 supervisor_t* supervisor_get(int instance) {
-    if (instance < 0 || instance >= MAX_SUPERVIORS) {
+    if (instance < 0 || instance >= MAX_SUPERVISORS) {
         return NULL;
     }
     return supervisors[instance];
@@ -115,7 +115,7 @@ int supervisor_remove_service_wrapper(supervisor_t* supervisor, pid_t pid) {
     for (int j = 0; j < supervisor->services[i].argc; j++) {
         free((char*) supervisor->services[i].argv[j]);
     }
-    free((char**) supervisor->services[i].argv);
+//    free((char**) supervisor->services[i].argv);
     supervisor->services[i] = get_empty_service();
     return 0;
 }
@@ -165,7 +165,7 @@ int get_service_index_from_service_name(supervisor_t* supervisor, const char *fo
 }
 
 int get_supervisor_instance_from_service_pid(pid_t pid) {
-    for (int i = 0; i < MAX_SUPERVIORS; i++) {
+    for (int i = 0; i < MAX_SUPERVISORS; i++) {
         if (supervisors[i]) {
             for (int j = 0; j < MAX_SERVICES_PER_INSTANCE; j++) {
                 if (supervisors[i]->services[j].pid == pid) {

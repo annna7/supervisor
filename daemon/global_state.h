@@ -7,6 +7,6 @@
 extern char global_response_str[];
 extern volatile sig_atomic_t keep_running;
 extern int pipe_fd[];
-extern pthread_mutex_t pipe_mutex;
+extern pthread_mutex_t status_mutex;
 
 #endif

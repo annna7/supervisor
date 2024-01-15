@@ -14,6 +14,7 @@ typedef struct {
     int argc;
     int status;
     int restart_times_left;
+    bool is_opened;
 } service_t;
 
 service_t get_empty_service();

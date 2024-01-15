@@ -6,7 +6,6 @@
 #include <signal.h>
 #include <sys/stat.h>
 #include <syslog.h>
-#include <stdbool.h>
 #include <getopt.h>
 #include <pthread.h>
 #include "utils.h"
@@ -14,6 +13,7 @@
 #include "signal_handler.h"
 #include "constants.h"
 #include "global_state.h"
+#include "existing_process_handler.h"
 
 #define SOCKET_PATH "/tmp/supervisor_daemon.sock"
 
@@ -105,7 +105,7 @@ int main() {
         exit(EXIT_FAILURE);
     }
 
-    pthread_mutex_init(&pipe_mutex, NULL);
+    pthread_mutex_init(&status_mutex, NULL);
 
     pthread_t signal_handler_thread;
     if (pthread_create(&signal_handler_thread, NULL, sigchild_listener, NULL) != 0) {
@@ -114,6 +114,12 @@ int main() {
     }
 
     syslog(LOG_INFO, "created signal handler thread");
+
+    pthread_t service_polling_thread;
+    if (pthread_create(&service_polling_thread, NULL, service_polling_thread_function, NULL) != 0) {
+        perror("pthread_create");
+        exit(EXIT_FAILURE);
+    }
 
     while (keep_running) {
         client_socket = accept(server_socket, NULL, NULL);

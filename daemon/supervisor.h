@@ -10,6 +10,7 @@ typedef struct {
     service_t services[MAX_SERVICES_PER_INSTANCE];
 } supervisor_t;
 
+extern supervisor_t* supervisors[];
 supervisor_t* supervisor_init(int instance);
 supervisor_t* supervisor_get(int instance);
 service_t supervisor_open_service_wrapper(supervisor_t* supervisor, pid_t pid);
