@@ -11,7 +11,6 @@
 #include <uv/errno.h>
 #include <stdio.h>
 
-// TODO: verify that child service was not removed from supervisor monitoring and proper exception handling
 void handle_sigchld(int sig, siginfo_t *siginfo, void *context) {
     pid_t pid = siginfo->si_pid;
 

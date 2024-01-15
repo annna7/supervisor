@@ -23,12 +23,9 @@ typedef struct {
     int restart_times;
 } Options;
 
-// pipe for communication between signal handler and main thread
 
 
-// we have a while (true) in main, but we still need to join threads etc. when the daemon is terminated
-// so, we use a global variable to control when termination happens and this way we can do the cleanup
-pthread_mutex_t service_status_mutex; // TODO: put in code
+
 void daemonize();
 void process_commands(int client_socket, char *response);
 void parse_command_arguments(char *command_str, char *response_str);

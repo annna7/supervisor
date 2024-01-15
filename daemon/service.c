@@ -12,8 +12,6 @@
 #include "constants.h"
 #include "global_state.h"
 
-// TODO: add discriminator for open/create
-// TODO: polling mechanism for open
 service_t service_open(pid_t pid) {
     int *argc = malloc(sizeof(int));
     char **argv = get_process_arguments(pid, argc);
@@ -249,7 +247,6 @@ int service_suspend(service_t *service) {
         service->status = SUPERVISOR_STATUS_STOPPED;
         pthread_mutex_unlock(&status_mutex);
         kill(service->pid, SIGSTOP);
-        // TODO: check if the service is actually stopped (proc/pid/status ?)
         syslog(LOG_INFO, "Service %d was successfully suspended!", service->pid);
         return 0;
     } else {

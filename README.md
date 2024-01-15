@@ -43,6 +43,7 @@ The cli and daemon communicate via a unix socket, with the cli sending the comma
 * Tidy up logs! (2)
 * Documentation (2)
 * Release (1)
+* Demo (1)
 ~~* Fix date bug in existing process handler (1)~~
 ~~* Fix why sending signals externally (kill -SIGCONT) doesn't successfully update status~~
 * Refactor code in daemon.c for command handling - create new file `command-parser.c` and each cli call should be a separate function (so you can call them), like for status (2)

@@ -115,7 +115,6 @@ int supervisor_remove_service_wrapper(supervisor_t* supervisor, pid_t pid) {
     for (int j = 0; j < supervisor->services[i].argc; j++) {
         free((char*) supervisor->services[i].argv[j]);
     }
-//    free((char**) supervisor->services[i].argv);
     supervisor->services[i] = get_empty_service();
     return 0;
 }
