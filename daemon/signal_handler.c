@@ -53,40 +53,35 @@ void handle_sigterm(int sig, siginfo_t *siginfo, void *context) {
 void handle_sigchild_status(char *status, pid_t pid) {
     int supervisor_instance = get_supervisor_instance_from_service_pid(pid);
     if (supervisor_instance == -1) {
-        strcat(global_response_str, "INVALID SUPERVISOR IN HANDLE SIGCHILD");
+        append_to_global_response_str( "INVALID SUPERVISOR IN HANDLE SIGCHILD");
         return;
     }
 
     supervisor_t *supervisor = supervisor_get(supervisor_instance);
     if (supervisor == NULL) {
-        strcat(global_response_str, "INVALID SUPERVISOR IN HANDLE SIGCHILD");
+        append_to_global_response_str( "INVALID SUPERVISOR IN HANDLE SIGCHILD");
         return;
     }
 
     int service_index = get_service_index_from_pid(supervisor, pid);
     if (service_index == -1) {
-        strcat(global_response_str, "INVALID SERVICE IN HANDLE SIGCHILD");
+        append_to_global_response_str( "INVALID SERVICE IN HANDLE SIGCHILD");
         return;
     }
 
     pthread_mutex_lock(&status_mutex);
     if (strcmp(status, "STOPPED") == 0) {
         supervisor->services[service_index].status = SUPERVISOR_STATUS_STOPPED;
-        strcat(global_response_str, "STOPPED ");
-        strcat(global_response_str, supervisor->services[service_index].formatted_service_name);
-        strcat(global_response_str, " ");
+        append_to_global_response_str("STOPPED %s",supervisor->services[service_index].formatted_service_name );
+
         pthread_mutex_unlock(&status_mutex);
     } else if (strcmp(status, "TERMINATED") == 0) {
         supervisor->services[service_index].status = SUPERVISOR_STATUS_TERMINATED;
-        strcat(global_response_str, "TERMINATED ");
-        strcat(global_response_str, supervisor->services[service_index].formatted_service_name);
-        strcat(global_response_str, " ");
+        append_to_global_response_str("TERMINATED %s",supervisor->services[service_index].formatted_service_name );
         pthread_mutex_unlock(&status_mutex);
     } else if (strcmp(status, "CRASHED") == 0) {
         supervisor->services[service_index].status = SUPERVISOR_STATUS_CRASHED;
-        strcat(global_response_str, "CRASHED ");
-        strcat(global_response_str, supervisor->services[service_index].formatted_service_name);
-        strcat(global_response_str, " ");
+        append_to_global_response_str("CRASHED %s",supervisor->services[service_index].formatted_service_name );
         pthread_mutex_unlock(&status_mutex);
         if (supervisor->services[service_index].restart_times_left > 0) {
             syslog(LOG_INFO, "Restarting service %s %s", supervisor->services[service_index].formatted_service_name, supervisor->services[service_index].program_path);
@@ -96,12 +91,10 @@ void handle_sigchild_status(char *status, pid_t pid) {
         }
     } else if (strcmp(status, "CONTINUED") == 0) {
         supervisor->services[service_index].status = SUPERVISOR_STATUS_RUNNING;
-        strcat(global_response_str, "CONTINUED ");
-        strcat(global_response_str, supervisor->services[service_index].formatted_service_name);
-        strcat(global_response_str, " ");
+        append_to_global_response_str("CONTINUED %s",supervisor->services[service_index].formatted_service_name );
         pthread_mutex_unlock(&status_mutex);
     } else {
-        strcat(global_response_str, "INVALID STATUS IN HANDLE SIGCHILD");
+        append_to_global_response_str("INVALID STATUS IN HANDLE SIGCHILD");
         pthread_mutex_unlock(&status_mutex);
         return;
     }

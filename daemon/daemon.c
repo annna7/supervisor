@@ -241,9 +241,7 @@ void parse_command_arguments(char *command_str) {
             if (!new_pid) {
                 append_to_global_response_str("%s", "Service not created");
             }
-            else if (){
-                append_to_global_response_str( "Service created with pid %d\n", *new_pid);
-            }
+
             free(new_pid);
             free(argv_service);
         } else if (strcmp(command, "open-service") == 0) {

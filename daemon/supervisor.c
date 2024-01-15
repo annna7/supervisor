@@ -76,23 +76,21 @@ int supervisor_close(supervisor_t* supervisor) {
 }
 
 int supervisor_create_service_wrapper(supervisor_t* supervisor, const char * service_name, const char * program_path, const char ** argv, int argc, int flags, pid_t *new_pid) {
-    if (!supervisor) {
-        return -1;
-    }
+
     int i = get_free_service_index(supervisor);
     if (i == -1) {
-        syslog(LOG_ERR, "No space for new service");
+        append_to_global_response_str("No space for new service");
         return -1;
     }
 
     service_t new_service = service_create(service_name, program_path, argv, argc, flags, time(NULL));
     if (!new_service.pid) {
-        syslog(LOG_ERR, "Failed to create service");
+        append_to_global_response_str("Failed to create service");
         return -1;
     }
     syslog(LOG_INFO, "%s\n", new_service.formatted_service_name);
     supervisor->services[i] = new_service;
-    syslog(LOG_INFO, "Just created service with pid %d and status %d", supervisor->services[i].pid, supervisor->services[i].status);
+    append_to_global_response_str( "Just created service with pid %d and status %d", supervisor->services[i].pid, supervisor->services[i].status);
     *new_pid = new_service.pid;
     return 0;
 }
