@@ -11,6 +11,8 @@ The cli and daemon communicate via a unix socket, with the cli sending the comma
 ### Options
 
 * 'instance' - the index of the supervisor instance to initialize (0-99)
+* 'create-stopped' - no arguments
+* 'restart-times' - number of times to restart the process
 
 ### Usage
 * `./cli init --instance 2`
@@ -18,7 +20,13 @@ The cli and daemon communicate via a unix socket, with the cli sending the comma
 * `./cli close --instance 2`
 * `./cli create-service /home/anna/Desktop/so/supervisor/build/bin/parrot parrot 2 wow -i 10`
 * `./cli suspend-service <pid> -i 10` (pid known from create-service output)
-* etc
+* `./cli open-service <pid> -i 10`
+* `./cli close-service <pid> -i 10`
+* `./cli suspend-service <pid> -i 10`
+* `./cli service-status <pid> -i 10`
+* `./cli resume-service <pid> -i 10`
+* `./cli list-supervisor -i 10`
+* `./cli supervisor-freelist <pid> <pid> ... -i 10`
 
 
 ### Logs

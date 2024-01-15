@@ -68,12 +68,49 @@ int get_opened_service_status(pid_t pid) {
     }
 }
 
+#include <time.h>
+#include <syslog.h>
+
+
 long get_ticks_per_second() {
     return sysconf(_SC_CLK_TCK);
 }
 
+time_t get_system_up_time(){
+    char path[40], buffer[1024];
+    sprintf(path, "/proc/uptime");
+    FILE *file = fopen(path, "r");
+    if (!file) {
+        perror("Error opening file");
+        return -1;
+    }
+
+    if (fgets(buffer, sizeof(buffer), file) == NULL) {
+        perror("Error reading file");
+        fclose(file);
+        return -1;
+    }
+
+    char *token;
+    const char *delimiter = " ";
+    time_t up_time = 0;
+
+    token = strtok(buffer, delimiter);
+    up_time = strtoll(token, NULL, 10);
+    fclose(file);
+
+    return up_time;
+
+}
+
 // TODO: why is this returning the wrong date?
 time_t get_process_start_time(pid_t pid) {
+
+    time_t system_up_time = get_system_up_time();
+    time_t current_time;
+    time(&current_time);
+
+
     char path[40], buffer[1024];
     sprintf(path, "/proc/%d/stat", pid);
     FILE *file = fopen(path, "r");
@@ -104,6 +141,7 @@ time_t get_process_start_time(pid_t pid) {
     }
 
     fclose(file);
+    start_time = current_time - (system_up_time - start_time);
     return start_time;
 }
 
