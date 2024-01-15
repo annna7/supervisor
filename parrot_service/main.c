@@ -3,7 +3,7 @@
 #include <syslog.h>
 
 int main(int argc, char *argv[]) {
-   
+
 /*     if (argc != 2) {
         fprintf(stderr, "Usage: %s <message> %d\n", argv[0], argc);
         return 1;
@@ -22,11 +22,5 @@ int main(int argc, char *argv[]) {
 	    sleep(2);
     }
     fclose(log_file);
-   // int i = 0;
-    //while (1) {
-    //    printf("%s %d\n", message, i);
-     //   ++i;
-       // sleep(1);
-   // }
-   return 0;
+    return 0;
 }

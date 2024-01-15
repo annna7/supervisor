@@ -1,36 +1,65 @@
 # Supervisor
 
+## Introduction
+
+**Supervisor** is a daemon that is designed to **execute** and **monitor** multiple services, running concurrently. 
+It can be used to **create** new services, **open** existing ones, **kill** them, as well as **halt** and **resume** their execution.
+The daemon is able to **restart crashed services**, as well as **schedule** services to be started at a later time, akin to a cron job.
+Supervisor also monitors the **status** of the services over time, tracking both **internal** and **external** changes to its services.
+The daemon is able to handle multiple instances of itself, each with its own set of services, allowing for a clean separation of concerns.
+The commands received by the daemon and its responses are logged via `syslog` and can be viewed using `journalctl -t supervisor`.
+
 ## Structure
+### Core
+* **cli** - command line interface, used to communicate with the daemon
+* **daemon** - daemon process, responsible for the core functionality
+### Toy Services for Testing
+* **parrot_service** - service that writes a to a file every 2 secs
+* **test_restart** - service that segfaults after a user-defined time
 
-* cli - command line interface
-* daemon - daemon process
-* parrot_service - service that writes to a file every 2 secs
+## Description
 
-The cli and daemon communicate via a unix socket, with the cli sending the commands received to the daemon.
+The cli and daemon communicate via a **unix socket**, with the cli sending the commands received to the daemon.
+There are 3 main threads in the daemon:
+* **main thread** 
+  - listens for new commands from the cli received via the socket, parses them and sends them to the appropriate command handler
+* **signal handler thread** 
+  - handles the children services (i.e. have directly been created by the user via the supervisor daemon)
+  - communicates with the SIGCHILD handler via a pipe and updates the status of the process that sent the signal (and restarts it if necessary)
+* **polling thread** 
+  - handles the opened services (i.e. have not been created by the supervisor daemon itself, but have been opened subsequently by the user)
+  - periodically sends signal 0 to all opened services and updates their status accordingly
+
+## Service Statuses
+
+* **RUNNING** - service is running
+* **STOPPED** - service execution is suspended, but can be resumed (e.g. **_SIGSTOP_**)
+* **KILLED** - service execution is suspended and cannot be resumed (e.g. **_SIGKILL_**)
+* **CRASHED** - service execution has crashed and cannot be resumed, since there are no restart times left (e.g. **_SIGSEGV_**)
+* **PENDING** - service is scheduled by the user to be started at a later time
 
 ### Options
 
-* 'instance' - the index of the supervisor instance to initialize (0-99)
-* 'create-stopped' - no arguments
-* 'restart-times' - number of times to restart the process
+* `instance` - the index of the supervisor instance to initialize (0-99)
+* `create-stopped`- no arguments
+* `restart-times` - number of times to restart the process
 
 ### Usage
-* `./cli init --instance 2`
+* `./cli init --instance <instance>`
 * `./cli list-supervisors`
-* `./cli close --instance 2`
-* `./cli create-service /home/anna/Desktop/so/supervisor/build/bin/parrot parrot 2 wow -i 10`
-* `./cli suspend-service <pid> -i 10` (pid known from create-service output)
-* `./cli open-service <pid> -i 10`
-* `./cli close-service <pid> -i 10`
-* `./cli suspend-service <pid> -i 10`
-* `./cli service-status <pid> -i 10`
-* `./cli resume-service <pid> -i 10`
-* `./cli list-supervisor -i 10`
-* `./cli supervisor-freelist <pid> <pid> ... -i 10`
+* `./cli close --instance <instance>`
+* `./cli create-service <path> <args> {-c {delay_until_start}} {-r <restart_times>} -i <instance>`
+* `./cli open-service <pid> -i <instance>`
+* `./cli suspend-service <pid> -i <instance>` - pause service execution (**RUNNING** -> **STOPPED**)
+* `./cli resume-service <pid> -i <instance>` - resume execution of a suspended service (**STOPPED** -> **RUNNING**)
+* `./cli close-service <pid> -i <instance>` - kill service execution (**RUNNING** -> **KILLED**)
+* `./cli remove-service <pid> -i <instance>` - remove service from supervisor, regardless of status
+* `./cli service-status <pid> -i <instance>` - get status of service
+* `./cli list-supervisor -i <instance>` - list all services of supervisor
+* `./cli supervisor-freelist <pid> <pid> ... -i 10` - remove multiple services from supervisor
+* `./cli supervisor-cancel <pid> -i <instance>` - cancel start of scheduled service and remove it from supervisor (**PENDING** -> none)
 
-
-### Logs
-`journalctl -t supervisor -n 10` - show last 10 commands
+Note: The `pids` are known from the output of `create-service` and `list-supervisor` commands.
 
 ### Run application
 * `cd build`
@@ -40,18 +69,7 @@ The cli and daemon communicate via a unix socket, with the cli sending the comma
 * start daemon with `./daemon`
 * run `cli` commands (from usage section)
 
-## TODO
-* Add mutex throughout the code, whenever `status` is queried/updated (1)
-* Create a simple toy program with predictable segmentation fault - access null pointer after 1000s (1)
-* Restart logic only for created by user programs - handle async unsafe stuff (2)
-* Add discriminator for opened/created by user services and update throughout the code (1)
-* Polling mechanism for open - for loop in another thread that sends signal zero to opened services and updates (with mutex) their status -> everything except the flags should work (3)
-* Create custom errors (2)
-* Print result of each command for user to see - use global result string, probably remove existing char *response from function signatures (3)
-* Tidy up logs! (2)
-* Documentation (2)
-* Release (1)
-* Fix date bug in existing process handler (1)
-* Fix why sending signals externally (kill -SIGCONT) doesn't successfully update status
-* Refactor code in daemon.c for command handling - create new file `command-parser.c` and each cli call should be a separate function (so you can call them), like for status (2)
-* scheduling (cli option to wait x seconds, nice to have - for testing cancel) (2)
+### Team
+* Pecheanu Anna
+* Mihalcea Alexandru
+* Popa Bianca

@@ -72,3 +72,5 @@ cli/CMakeCache.txt
 **/CMakeCache.txt
 **/CMakeFiles
 build/
+
+.vscode

@@ -2,6 +2,7 @@
 #define SUPERVISOR_UTILS_H
 
 #include <fcntl.h>
+#include "constants.h"
 
 void parse_string(char *input_str, int* number_of_tokens, char **parsed_tokens);
 pid_t extract_pid_from_formatted_service_name(const char* formatted_service_name);

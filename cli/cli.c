@@ -31,7 +31,7 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    char buffer[1024] = {0}; // concatenate arguments
+    char buffer[4096] = {0}; // concatenate arguments
 
     for (int i = 1; i < argc; i++) {
         strcat(buffer, argv[i]);

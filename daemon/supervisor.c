@@ -1,25 +1,33 @@
 #include <stdlib.h>
 #include <syslog.h>
 #include <string.h>
-#include <stdio.h>
 #include <time.h>
 #include "supervisor.h"
+#include "global_state.h"
 
-supervisor_t* supervisors[MAX_SUPERVIORS] = {NULL};
+supervisor_t* supervisors[MAX_SUPERVISORS] = {NULL};
 
 void list_supervisors() {
-    syslog(LOG_INFO, "list_supervisors");
-    printf("list_supervisors\n");
-    for (int i = 0; i < MAX_SUPERVIORS; i++) {
+    bool are_supervisors = false;
+    for (int i = 0; i < MAX_SUPERVISORS; i++) {
         if (supervisors[i]) {
-            printf("%d\n", i);
-            syslog(LOG_INFO, "supervisor %d", i);
+//            char *response = malloc(sizeof(char) * RESPONSE_STR_SIZE);
+//            char  response[RESPONSE_STR_SIZE] ;
+//            sprintf(response, "Supervisor %d\n", i);
+//            sprintf(global_response_str + strlen(global_response_str), "Supervisor %d\n", i);
+//            strcat(global_response_str, response);
+//            free(response);
+            append_to_global_response_str("Supervisor %d\n", i);
+            are_supervisors = true;
         }
+    }
+    if (!are_supervisors) {
+        strcpy(global_response_str, "No supervisors at the moment!\n");
     }
 }
 
 supervisor_t* supervisor_init(int instance) {
-    if (instance < 0 || instance >= MAX_SUPERVIORS) {
+    if (instance < 0 || instance >= MAX_SUPERVISORS) {
         return NULL;
     }
     if (supervisors[instance]) {
@@ -39,8 +47,19 @@ supervisor_t* supervisor_init(int instance) {
 }
 
 supervisor_t* supervisor_get(int instance) {
-    if (instance < 0 || instance >= MAX_SUPERVIORS) {
+    if (instance < 0 || instance >= MAX_SUPERVISORS) {
         return NULL;
+    }
+    if(supervisors[instance] == NULL) {
+//        char  response[RESPONSE_STR_SIZE] ;
+//        sprintf(response, "Supervisor %d does not exist\n", instance);
+//        strcpy(global_response_str, response);
+        append_to_global_response_str("Supervisor %d does not exist\n", instance);
+//        char *response = malloc(sizeof(char) * RESPONSE_STR_SIZE);
+//        sprintf(response, "Supervisor %d does not exist\n", instance);
+//        strcat(global_response_str, response);
+//        free(response);
+//        sprintf(global_response_str + strlen(global_response_str), "Supervisor %d does not exist\n", instance);
     }
     return supervisors[instance];
 }
@@ -49,6 +68,17 @@ int supervisor_close(supervisor_t* supervisor) {
     if (!supervisor) {
         return -1;
     }
+
+    append_to_global_response_str("Supervisor %d has been closed\n", supervisor->instance);
+//    char response[RESPONSE_STR_SIZE] ;
+//    sprintf(response, "Supervisor %d has been closed\n", supervisor->instance);
+//    strcpy(global_response_str, response);
+//    char *response = malloc(sizeof(char) * RESPONSE_STR_SIZE);
+//    sprintf(response, "Supervisor %d has been closed\n", supervisor->instance);
+//    strcat(global_response_str, response);
+//    free(response);
+//    sprintf(global_response_str + strlen(global_response_str), "Supervisor %d has been closed\n", supervisor->instance);
+//    global_response_str[strlen(global_response_str)] = '\0';
     const char *** service_names = malloc(sizeof(char**));
     unsigned int * count = malloc(sizeof(unsigned int));
 
@@ -77,7 +107,7 @@ int supervisor_create_service_wrapper(supervisor_t* supervisor, const char * ser
     }
 
     service_t new_service = service_create(service_name, program_path, argv, argc, flags, time(NULL));
-    if (new_service.service_name == NULL) {
+    if (!new_service.pid) {
         syslog(LOG_ERR, "Failed to create service");
         return -1;
     }
@@ -98,7 +128,7 @@ service_t supervisor_open_service_wrapper(supervisor_t* supervisor, pid_t pid) {
         return get_empty_service();
     }
     service_t new_service = service_open(pid);
-    if (new_service.service_name == NULL) {
+    if (!new_service.pid) {
         syslog(LOG_ERR, "Failed to open service");
         return get_empty_service();
     }
@@ -107,7 +137,6 @@ service_t supervisor_open_service_wrapper(supervisor_t* supervisor, pid_t pid) {
 }
 
 int supervisor_remove_service_wrapper(supervisor_t* supervisor, pid_t pid) {
-//    syslog(LOG_INFO, "Removing service %d", pid);
     if (!supervisor) {
         return -1;
     }
@@ -116,7 +145,9 @@ int supervisor_remove_service_wrapper(supervisor_t* supervisor, pid_t pid) {
         syslog(LOG_ERR, "Service %d not found", pid);
         return -1;
     }
-    free((char*) supervisor->services[i].formatted_service_name);
+    for (int j = 0; j < supervisor->services[i].argc; j++) {
+        free((char*) supervisor->services[i].argv[j]);
+    }
     supervisor->services[i] = get_empty_service();
     return 0;
 }
@@ -166,7 +197,7 @@ int get_service_index_from_service_name(supervisor_t* supervisor, const char *fo
 }
 
 int get_supervisor_instance_from_service_pid(pid_t pid) {
-    for (int i = 0; i < MAX_SUPERVIORS; i++) {
+    for (int i = 0; i < MAX_SUPERVISORS; i++) {
         if (supervisors[i]) {
             for (int j = 0; j < MAX_SERVICES_PER_INSTANCE; j++) {
                 if (supervisors[i]->services[j].pid == pid) {
@@ -180,7 +211,7 @@ int get_supervisor_instance_from_service_pid(pid_t pid) {
 
 int get_free_service_index(supervisor_t *supervisor) {
     for (int i = 0; i < MAX_SERVICES_PER_INSTANCE; i++) {
-        if (supervisor->services[i].service_name == NULL) {
+        if (supervisor->services[i].pid == 0) {
             return i;
         }
     }
@@ -199,7 +230,7 @@ int supervisor_list(supervisor_t* supervisor, const char *** service_names, unsi
     }
     *count = 0;
     for (int i = 0; i < MAX_SERVICES_PER_INSTANCE; i++) {
-        if (supervisor->services[i].service_name) {
+        if (supervisor->services[i].pid) {
             syslog(LOG_INFO, "supervisor_list: %s %d\n", supervisor->services[i].formatted_service_name, supervisor->services[i].pid);
             (*service_names)[*count] = malloc(sizeof(char) * (strlen(supervisor->services[i].formatted_service_name) + 1)); // +1 for the null terminator
             strcpy((*service_names)[*count], supervisor->services[i].formatted_service_name);

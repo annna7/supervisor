@@ -2,10 +2,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <stdio.h>
-#include <sys/syslog.h>
 #include "utils.h"
-#include "constants.h"
-
 
 void parse_string(char *input_string, int* number_of_tokens, char **parsed_tokens) {
     char *token;
@@ -83,8 +80,12 @@ void append_service_status_to_string(int service_status, char *response_str) {
             strcat(response_str, "Stopped");
             break;
         }
-        case SUPERVISOR_STATUS_KILLED: {
+        case SUPERVISOR_STATUS_TERMINATED: {
             strcat(response_str, "Killed");
+            break;
+        }
+        case SUPERVISOR_STATUS_CRASHED: {
+            strcat(response_str, "Crashed");
             break;
         }
         default:

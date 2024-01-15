@@ -4,8 +4,68 @@
 #include <stdlib.h>
 #include <linux/limits.h>
 #include <fcntl.h>
+#include <sys/syslog.h>
 #include "existing_process_handler.h"
 #include "constants.h"
+#include "supervisor.h"
+#include "global_state.h"
+
+void *service_polling_thread_function(void *arg) {
+    while (keep_running) {
+        for (int i = 0; i < MAX_SUPERVISORS; i++) {
+            supervisor_t *supervisor = supervisor_get(i);
+            if (!supervisor) {
+                continue;
+            }
+            for (int j = 0; j < MAX_SERVICES_PER_INSTANCE; j++) {
+                service_t *service = &supervisor->services[j];
+                if (service->is_opened) {
+                    int status = get_opened_service_status(service->pid);
+                    pthread_mutex_lock(&status_mutex);
+                    if (status != service->status) {
+                        service->status = status;
+                    }
+                    pthread_mutex_unlock(&status_mutex);
+                }
+            }
+        }
+        sleep(1);
+    }
+}
+
+int get_opened_service_status(pid_t pid) {
+    char path[256];
+    FILE *statusf;
+    char line[256];
+    char state;
+
+    snprintf(path, sizeof(path), "/proc/%d/status", pid);
+    statusf = fopen(path, "r");
+    if (!statusf) {
+        return SUPERVISOR_STATUS_TERMINATED; // process not found, either terminated or crashed
+    }
+
+    while (fgets(line, sizeof(line), statusf)) {
+        if (strncmp(line, "State:", 6) == 0) {
+            sscanf(line, "State:\t%c", &state);
+            break;
+        }
+    }
+    fclose(statusf);
+
+    switch (state) {
+        case 'R': // running
+        case 'S': // sleeping (but can be interrupted)
+        case 'D': // waiting for I/O (disk sleep)
+            return SUPERVISOR_STATUS_RUNNING;
+        case 'T': // stopped or traced by debugger
+            return SUPERVISOR_STATUS_STOPPED;
+        case 'X': // dead
+        case 'Z': // zombie
+        default: // default to KILLED for unknown states
+            return SUPERVISOR_STATUS_TERMINATED;
+    }
+}
 
 #include <time.h>
 #include <syslog.h>
