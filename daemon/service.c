@@ -170,7 +170,8 @@ service_t service_create(const char * service_name, const char * program_path, c
     strcpy(service.formatted_service_name, strdup(format_service_name(service_name, pid, service.start_time)));
     syslog(LOG_INFO, "Service %s created with path %s", service.formatted_service_name, service.program_path);
     // TODO: fix restart times
-    service.restart_times_left = 3;
+    syslog(LOG_INFO, "Restart times: %d %d", flags, (flags & 16) & 0xF);
+    service.restart_times_left = flags >> 16;
     return service;
 }
 

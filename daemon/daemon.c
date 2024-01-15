@@ -238,6 +238,7 @@ void parse_command_arguments(char *command_str, char *response_str) {
 
             argv_service[argc_service + 1] = NULL;
 
+            syslog(LOG_INFO, "Option restart %d %d", options.restart_times, SUPERVISOR_FLAGS_RESTARTTIMES(options.restart_times));
             pid_t *new_pid = malloc(sizeof(pid_t));
             supervisor_create_service_wrapper(supervisor_get(options.instance), service_name, program_path,
                                               argv_service, argc_service, options.create_stopped |
