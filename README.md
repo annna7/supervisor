@@ -28,7 +28,6 @@ The cli and daemon communicate via a unix socket, with the cli sending the comma
 * `./cli list-supervisor -i 10`
 * `./cli supervisor-freelist <pid> <pid> ... -i 10`
 
-
 ### Logs
 `journalctl -t supervisor -n 10` - show last 10 commands
 
@@ -56,3 +55,6 @@ The cli and daemon communicate via a unix socket, with the cli sending the comma
 ~~* Fix why sending signals externally (kill -SIGCONT) doesn't successfully update status~~
 * Refactor code in daemon.c for command handling - create new file `command-parser.c` and each cli call should be a separate function (so you can call them), like for status (2)
 * scheduling (cli option to wait x seconds, nice to have - for testing cancel) (2)
+
+### Attach to Process for Debug
+`echo 0 | sudo tee /proc/sys/kernel/yama/ptrace_scope`

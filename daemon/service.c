@@ -108,23 +108,23 @@ int service_resume(service_t *service) {
     }
 
     pthread_mutex_lock(&status_mutex);
-    int return_value;
     if (service->status == SUPERVISOR_STATUS_PENDING) {
         // TODO: handle scheduling?
         syslog(LOG_ERR, "Don't know how to handle scheduling yet!");
-        return_value = -1;
+        pthread_mutex_unlock(&status_mutex);
+        return -1;
     } else if (service->status == SUPERVISOR_STATUS_STOPPED) {
         // conflict between SIGCHILD handler and manual resume
         // service->status = SUPERVISOR_STATUS_RUNNING;
+        pthread_mutex_unlock(&status_mutex);
         kill(service->pid, SIGCONT);
         syslog(LOG_INFO, "Service %d was successfully resumed!", service->pid);
-        return_value = 0;
+        return 0;
     } else {
         syslog(LOG_INFO, "Service %d isn't stopped and can't be resumed!", service->pid);
-        return_value = -1;
+        pthread_mutex_unlock(&status_mutex);
+        return -1;
     }
-    pthread_mutex_unlock(&status_mutex);
-    return return_value;
 }
 
 service_t service_create(const char * service_name, const char * program_path, const char ** argv, int argc, int flags, time_t start_time) {
