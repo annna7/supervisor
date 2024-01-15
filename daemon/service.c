@@ -39,15 +39,16 @@ service_t service_create(const char * service_name, const char * program_path, c
     syslog(LOG_INFO, "Program path %s", program_path);
     service_t service = get_empty_service();
 
-    service.status = SUPERVISOR_STATUS_PENDING;
-
     // TODO: scheduling mechanism for pending services?
     // TODO: wait(time)
 
-    if (flags & SUPERVISOR_FLAGS_CREATESTOPPED) {
+    if ((flags & SUPERVISOR_FLAGS_CREATESTOPPED) == 1) {
         service.status = SUPERVISOR_STATUS_STOPPED;
         syslog(LOG_INFO, "Service %s will be created stopped", service_name);
-    } else {
+    } else if ((flags & SUPERVISOR_FLAGS_CREATESTOPPED) > 1) {
+        service.status = SUPERVISOR_STATUS_PENDING;
+        syslog(LOG_INFO, "Service %s is pending for %d seconds", service_name, (flags & SUPERVISOR_FLAGS_CREATESTOPPED) - 1);
+    }else {
         service.status = SUPERVISOR_STATUS_RUNNING;
         syslog(LOG_INFO, "%s %s %s", "Starting service", service_name, program_path);
     }
@@ -64,8 +65,12 @@ service_t service_create(const char * service_name, const char * program_path, c
             return get_empty_service();
         }
 
-        if (flags & SUPERVISOR_FLAGS_CREATESTOPPED) {
+        if ((flags & SUPERVISOR_FLAGS_CREATESTOPPED) == 1) {
             raise(SIGSTOP);
+        }else if((flags & SUPERVISOR_FLAGS_CREATESTOPPED) > 0){
+            sleep(flags & SUPERVISOR_FLAGS_CREATESTOPPED -1);
+            service.status = SUPERVISOR_STATUS_RUNNING;
+            syslog(LOG_INFO, "Service %s will start now", service_name);
         }
 
         execv(program_path, (char *const *) argv);

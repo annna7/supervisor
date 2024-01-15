@@ -123,7 +123,7 @@ void parse_command_arguments(char *command_str, char *response_str) {
     } else {
         struct option long_options[] = {
                 {"instance", required_argument, 0, 'i'},
-                {"create-stopped", no_argument, 0, 'c'},
+                {"create-stopped", optional_argument, 0, 'c'},
                 {"restart-times", required_argument, 0, 'r'},
                 {0, 0, 0, 0}
         };
@@ -132,14 +132,25 @@ void parse_command_arguments(char *command_str, char *response_str) {
         int option_index = 1;
         int c;
 
-        while ((c = getopt_long(number_of_tokens, command_tokens, "i:cr:", long_options, &option_index)) != -1) {
+        while ((c = getopt_long(number_of_tokens, command_tokens, "i:c::r:", long_options, &option_index)) != -1) {
             switch (c) {
                 case 'i':
                     options.instance = atoi(optarg);
                     syslog(LOG_INFO, "Instance: %d", options.instance);
                     break;
                 case 'c':
-                    options.create_stopped = 1;
+                    if(optarg == NULL && optind < number_of_tokens && command_tokens[optind][0] != '-'){
+                        optarg = command_tokens[optind++];
+                    }
+                    if(optarg != NULL){
+                        options.create_stopped = atoi(optarg) + 1;
+                        syslog(LOG_INFO, "Optional Argument: %d", options.create_stopped);
+
+                    }
+                    else{
+                        options.create_stopped = 1;
+                        syslog(LOG_INFO, "Default Argument: %d", options.create_stopped);
+                    }
                     break;
                 case 'r':
                     options.restart_times = atoi(optarg);
