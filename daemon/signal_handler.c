@@ -8,7 +8,7 @@
 #include "constants.h"
 #include "global_state.h"
 #include <unistd.h>
-#include <uv/errno.h>
+#include <errno.h>
 #include <stdio.h>
 
 void handle_sigchld(int sig, siginfo_t *siginfo, void *context) {

@@ -2,10 +2,19 @@
 #include <syslog.h>
 #include <string.h>
 #include <time.h>
+#include <unistd.h>
+#include <stdio.h>
+#include <errno.h>
 #include "supervisor.h"
 #include "global_state.h"
 
 supervisor_t* supervisors[MAX_SUPERVISORS] = {NULL};
+typedef struct {
+    supervisor_t * supervisor;
+    int service_index;
+    int* scheduling_pipe_fd;
+} schedulingThreadArgs;
+
 
 void list_supervisors() {
     bool are_supervisors = false;
@@ -95,6 +104,48 @@ int supervisor_close(supervisor_t* supervisor) {
     free(supervisor);
     return 0;
 }
+void* scheduling_thread_function(void *args){
+    syslog(LOG_INFO, "Starting scheduling_thread_function");
+    schedulingThreadArgs *threadArgs = (schedulingThreadArgs *) args;
+    supervisor_t *supervisor = threadArgs->supervisor;
+    int index = threadArgs->service_index;
+    int* scheduling_pipe_fd = threadArgs->scheduling_pipe_fd;
+    char buf[128];
+
+    while (1){
+        ssize_t nbytes = read(scheduling_pipe_fd[0], buf, sizeof(buf));
+        if (nbytes > 0) {
+            syslog(LOG_INFO, "Received scheduling_thread buffer size: %s", buf);
+            char *status = strtok(buf, " ");
+            syslog(LOG_INFO, "Received scheduling_thread status: %s", status);
+
+            if (status != NULL) {
+                syslog(LOG_INFO, "Inainte de mutex thread");
+                pthread_mutex_lock(&status_mutex);
+                supervisor->services[index].status = SUPERVISOR_STATUS_RUNNING;
+                pthread_mutex_unlock(&status_mutex);
+                syslog(LOG_INFO, "Am schimbat status");
+                break;
+            }
+
+            buf[nbytes] = '\0';
+        } else if (nbytes < 0) {
+            if (errno != EAGAIN && errno != 9) {
+                if (errno == 9) {
+                    syslog(LOG_ERR, "iar eu");
+                } else {
+                    syslog(LOG_ERR, "Failed to read from pipe");
+                    syslog(LOG_ERR, "Error: %s %d", strerror(errno), errno);
+                }
+            }
+            sleep(1);
+        } else if (nbytes == 0) {
+            syslog(LOG_ERR, "Pipe closed");
+            break;
+        }
+    }
+    free(scheduling_pipe_fd);
+}
 
 int supervisor_create_service_wrapper(supervisor_t* supervisor, const char * service_name, const char * program_path, const char ** argv, int argc, int flags, pid_t *new_pid) {
     if (!supervisor) {
@@ -106,7 +157,28 @@ int supervisor_create_service_wrapper(supervisor_t* supervisor, const char * ser
         return -1;
     }
 
-    service_t new_service = service_create(service_name, program_path, argv, argc, flags, time(NULL));
+    int *scheduling_pipe_fd = (int *)malloc(2 * sizeof(int));
+    if(scheduling_pipe_fd == NULL){
+        perror("malloc_scheduling_pipe_fd");
+        exit(EXIT_FAILURE);
+    }
+    // setting up the pipe for communication between scheduled thread and daemon
+    if (pipe(scheduling_pipe_fd) == -1) {
+        perror("pipe");
+        exit(EXIT_FAILURE);
+    }
+
+    if (fcntl(scheduling_pipe_fd[1], F_SETFL, O_NONBLOCK) == -1) {
+        perror("fcntl");
+        exit(EXIT_FAILURE);
+    }
+
+    if (fcntl(scheduling_pipe_fd[0], F_SETFL, O_NONBLOCK) == -1) {
+        perror("fcntl");
+        exit(EXIT_FAILURE);
+    }
+
+    service_t new_service = service_create(service_name, program_path, argv, argc, flags, time(NULL), scheduling_pipe_fd);
     if (!new_service.pid) {
         syslog(LOG_ERR, "Failed to create service");
         return -1;
@@ -114,6 +186,24 @@ int supervisor_create_service_wrapper(supervisor_t* supervisor, const char * ser
     syslog(LOG_INFO, "%s\n", new_service.formatted_service_name);
     supervisor->services[i] = new_service;
     syslog(LOG_INFO, "Just created service with pid %d and status %d", supervisor->services[i].pid, supervisor->services[i].status);
+
+    if(new_service.status == SUPERVISOR_STATUS_PENDING) {
+
+        //Creating thread that waits for the status to change
+        pthread_t scheduling_thread;
+        schedulingThreadArgs args;
+        args.supervisor = supervisor;
+        args.service_index = i;
+        args.scheduling_pipe_fd = scheduling_pipe_fd;
+        if (pthread_create(&scheduling_thread, NULL, scheduling_thread_function, (void *) &args) != 0) {
+            perror("pthread_create");
+            exit(EXIT_FAILURE);
+        }
+    }
+    else{
+        syslog(LOG_INFO, "Facem threadul");
+    }
+
     *new_pid = new_service.pid;
     return 0;
 }
@@ -156,6 +246,7 @@ int supervisor_send_command_to_existing_service_wrapper(supervisor_t* supervisor
     if (!supervisor) {
         return -1;
     }
+    syslog(LOG_INFO, "IN supervisor_send_command_to_existing_service_wrapper");
     int i = get_service_index_from_pid(supervisor, pid);
     if (i == -1) {
         syslog(LOG_ERR, "Service %d not found", pid);
@@ -223,6 +314,7 @@ int supervisor_list(supervisor_t* supervisor, const char *** service_names, unsi
         syslog(LOG_ERR, "supervisor_list: supervisor is NULL");
         return -1;
     }
+    syslog(LOG_INFO, "In supervospr_list");
     *service_names = malloc(sizeof(char*) * MAX_SERVICES_PER_INSTANCE);
     if (!*service_names) {
         syslog(LOG_ERR, "malloc failed");

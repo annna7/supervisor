@@ -18,7 +18,7 @@ typedef struct {
 } service_t;
 
 service_t get_empty_service();
-service_t service_create(const char * service_name, const char * program_path, const char ** argv, int argc, int flags, time_t start_time);
+service_t service_create(const char * service_name, const char * program_path, const char ** argv, int argc, int flags, time_t start_time, int* scheduling_pipe_fd);
 service_t service_open(pid_t pid);
 // kill service (SIGKILL, doesn't appear in OS pids anymore)
 int service_kill(service_t* service);

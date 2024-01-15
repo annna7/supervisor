@@ -100,6 +100,8 @@ int main() {
         exit(EXIT_FAILURE);
     }
 
+
+
     pthread_mutex_init(&status_mutex, NULL);
 
     pthread_t signal_handler_thread;
@@ -206,6 +208,7 @@ void parse_command_arguments(char *command_str) {
                         syslog(LOG_INFO, "Default Argument: %d", options.create_stopped);
                     }
                     break;
+
                 case 'r':
                     options.restart_times = atoi(optarg);
                     break;
@@ -352,12 +355,15 @@ void parse_command_arguments(char *command_str) {
         } else if (strcmp(command, "list-supervisor") == 0) {
             unsigned int *count = malloc(sizeof(unsigned int));
             const char ***service_names = malloc(sizeof(char **));
+            syslog(LOG_INFO, "1");
             supervisor_t *supervisor = supervisor_get(options.instance);
             if (!supervisor) {
                 strcpy(global_response_str, "Invalid supervisor instance");
                 return;
             }
+            syslog(LOG_INFO, "2");
             supervisor_list(supervisor, service_names, count);
+            syslog(LOG_INFO, "3");
             strcpy(global_response_str, "List supervisor\n");
             for (int i = 0; i < *count; i++) {
                 const char *service_name = (*service_names)[i];

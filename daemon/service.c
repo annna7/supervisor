@@ -12,6 +12,7 @@
 #include "constants.h"
 #include "global_state.h"
 
+
 service_t service_open(pid_t pid) {
     int *argc = malloc(sizeof(int));
     char **argv = get_process_arguments(pid, argc);
@@ -75,9 +76,12 @@ int service_status(service_t* service) {
         syslog(LOG_ERR, "No such service");
         return -1;
     }
+    syslog(LOG_INFO, "In service_status before mutex");
     pthread_mutex_lock(&status_mutex);
     int status = service->status;
     pthread_mutex_unlock(&status_mutex);
+    syslog(LOG_INFO, "In service_status after mutex");
+
     return status;
 }
 
@@ -127,10 +131,12 @@ int service_resume(service_t *service) {
     }
 }
 
-service_t service_create(const char * service_name, const char * program_path, const char ** argv, int argc, int flags, time_t start_time) {
+
+service_t service_create(const char * service_name, const char * program_path, const char ** argv, int argc, int flags, time_t start_time, int* scheduling_pipe_fd) {
     syslog(LOG_INFO, "Creating service %s", service_name);
     syslog(LOG_INFO, "Program path %s", program_path);
     service_t service;
+    char status_message[64] = "RUNNING";
 
     strncpy(service.service_name, service_name, MAX_SERVICE_NAME_LENGTH);
     service.service_name[MAX_SERVICE_NAME_LENGTH - 1] = '\0';
@@ -150,7 +156,6 @@ service_t service_create(const char * service_name, const char * program_path, c
         syslog(LOG_INFO, "%s", service.argv[i]);
     }
 
-
     pthread_mutex_lock(&status_mutex);
     if ((flags & SUPERVISOR_FLAGS_CREATESTOPPED) == 1) {
         service.status = SUPERVISOR_STATUS_STOPPED;
@@ -163,6 +168,7 @@ service_t service_create(const char * service_name, const char * program_path, c
         syslog(LOG_INFO, "%s %s %s", "Starting service", service_name, program_path);
     }
     pthread_mutex_unlock(&status_mutex);
+
 
     pid_t pid = fork();
     if (pid < 0) {
@@ -180,8 +186,9 @@ service_t service_create(const char * service_name, const char * program_path, c
             raise(SIGSTOP);
         }else if((flags & SUPERVISOR_FLAGS_CREATESTOPPED) > 0){
             sleep(flags & SUPERVISOR_FLAGS_CREATESTOPPED -1);
-            service.status = SUPERVISOR_STATUS_RUNNING;
             syslog(LOG_INFO, "Service %s will start now", service_name);
+
+            write(scheduling_pipe_fd[1], status_message, strlen(status_message)+1);
         }
 
         execv(program_path, (char *const *) argv);
