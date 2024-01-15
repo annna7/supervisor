@@ -24,7 +24,6 @@ void *service_polling_thread_function(void *arg) {
                     pthread_mutex_lock(&status_mutex);
                     if (status != service->status) {
                         service->status = status;
-                        syslog(LOG_INFO, "service %s status changed to %d", service->formatted_service_name, status);
                     }
                     pthread_mutex_unlock(&status_mutex);
                 }

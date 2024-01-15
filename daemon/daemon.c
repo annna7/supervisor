@@ -25,8 +25,8 @@ typedef struct {
 
 
 void daemonize();
-void process_commands(int client_socket, char *response);
-void parse_command_arguments(char *command_str, char *response_str);
+void process_commands(int client_socket);
+void parse_command_arguments(char *command_str);
 
 int main() {
     struct sigaction sa_sig_term;
@@ -122,10 +122,10 @@ int main() {
             perror("accept");
             continue;
         }
-        char *response = malloc(256 * sizeof(char));
-        process_commands(client_socket, response);
-        write(client_socket, response, strlen(response));
-        free(response);
+        global_response_str[0] = '\0';
+        process_commands(client_socket);
+        write(client_socket, global_response_str, strlen(global_response_str));
+        global_response_str[0] = '\0';
         close(client_socket);
     }
 
@@ -141,7 +141,7 @@ int main() {
     return 0;
 }
 
-void parse_command_arguments(char *command_str, char *response_str) {
+void parse_command_arguments(char *command_str) {
     int number_of_tokens;
     char *command_tokens[64];
     for (int i = 0; i < 64; i++) {
@@ -165,8 +165,6 @@ void parse_command_arguments(char *command_str, char *response_str) {
 
     if (number_of_tokens == 1) {
         if (strcmp(command, "get-response") == 0) {
-            strcpy(response_str, global_response_str);
-            strcpy(global_response_str, "");
             return;
         }
         if (strcmp(command, "list-supervisors") == 0) {
@@ -175,7 +173,6 @@ void parse_command_arguments(char *command_str, char *response_str) {
         } else {
             strcpy(global_response_str, "Unknown command");
             syslog(LOG_ERR, "Unknown command: %s", command);
-            return;
         }
     } else {
         struct option long_options[] = {
@@ -210,13 +207,9 @@ void parse_command_arguments(char *command_str, char *response_str) {
         }
 
         if (strcmp(command, "init") == 0) {
-            //sprintf(global_response_str, "Initiated supervisor with instance = %d", options.instance);
-            sprintf(global_response_str, "Initiated supervisor with instance %d", options.instance);
+            sprintf(global_response_str, "Initialized supervisor instance %d", options.instance);
             syslog(LOG_INFO, "Init supervisor %d", options.instance);
             supervisor_init(options.instance);
-        } else if (strcmp(command, "list-supervisors") == 0) {
-            if(list_supervisors())
-                strcpy(global_response_str, "Supervisors:\n");
         } else if (strcmp(command, "close") == 0) {
             supervisor_close(supervisor_get(options.instance));
         } else if (strcmp(command, "create-service") == 0) {
@@ -392,7 +385,6 @@ void parse_command_arguments(char *command_str, char *response_str) {
         } else {
             strcpy(global_response_str, "Unknown command");
             syslog(LOG_ERR, "Unknown command: %s", command);
-            return;
         }
     }
 
@@ -401,7 +393,7 @@ void parse_command_arguments(char *command_str, char *response_str) {
     }
 }
 
-void process_commands(int client_socket, char *response) {
+void process_commands(int client_socket) {
     char buffer[256];
     int len = read(client_socket, buffer, sizeof(buffer) - 1);
     if (len == 0) {
@@ -409,10 +401,10 @@ void process_commands(int client_socket, char *response) {
     }
     buffer[len] = '\0';
 
-    parse_command_arguments(buffer, response);
+    parse_command_arguments(buffer);
 
     syslog(LOG_INFO, "Received command: %s", buffer);
-    syslog(LOG_INFO, "Response: %s", response);
+    syslog(LOG_INFO, "Response: %s", global_response_str);
 }
 
 void daemonize() {
