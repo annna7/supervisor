@@ -3,16 +3,27 @@
 #include <string.h>
 #include <time.h>
 #include "supervisor.h"
+#include "global_state.h"
 
 supervisor_t* supervisors[MAX_SUPERVISORS] = {NULL};
 
-void list_supervisors() {
+bool list_supervisors() {
     syslog(LOG_INFO, "list_supervisors");
+    bool are_supervisors = false;
     for (int i = 0; i < MAX_SUPERVISORS; i++) {
         if (supervisors[i]) {
+            char  response[RESPONSE_STR_SIZE] ;
+            sprintf(response, "Supervisor%d\n", i);
+            strcat(global_response_str, response);
             syslog(LOG_INFO, "supervisor %d", i);
+            are_supervisors = true;
         }
     }
+    if (!are_supervisors) {
+        strcpy(global_response_str, "No supervisors at the moment!\n");
+        return false;
+    }
+    return true;
 }
 
 supervisor_t* supervisor_init(int instance) {
@@ -39,6 +50,12 @@ supervisor_t* supervisor_get(int instance) {
     if (instance < 0 || instance >= MAX_SUPERVISORS) {
         return NULL;
     }
+    if(supervisors[instance] == NULL)
+    {
+        char  response[RESPONSE_STR_SIZE] ;
+        sprintf(response, "Supervisor %d does not exist\n", instance);
+        strcpy(global_response_str, response);
+    }
     return supervisors[instance];
 }
 
@@ -46,6 +63,9 @@ int supervisor_close(supervisor_t* supervisor) {
     if (!supervisor) {
         return -1;
     }
+    char  response[RESPONSE_STR_SIZE] ;
+    sprintf(response, "Supervisor %d has been closed\n", supervisor->instance);
+    strcpy(global_response_str, response);
     const char *** service_names = malloc(sizeof(char**));
     unsigned int * count = malloc(sizeof(unsigned int));
 

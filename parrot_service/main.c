@@ -11,7 +11,7 @@ int main(int argc, char *argv[]) {
     printf("%d %s %s\n", argc, argv[0], argv[1]);  
     const char *message = argv[1];
     FILE *log_file;
-    log_file = fopen("/home/anna/Desktop/so/supervisor/build/bin/log.txt", "w");
+    log_file = fopen("/home/mihalcea/CLionProjects/supervisor/build/bin/log.txt", "w");
     if (log_file == NULL) {
 	perror("error open file");
 	return 1;
@@ -21,6 +21,7 @@ int main(int argc, char *argv[]) {
 	    fflush(log_file);
 	    sleep(2);
     }
+
     fclose(log_file);
    // int i = 0;
     //while (1) {
