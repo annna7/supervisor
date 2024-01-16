@@ -169,7 +169,12 @@ service_t service_create(const char * service_name, const char * program_path, c
     }
     pthread_mutex_unlock(&status_mutex);
 
-
+    if(pthread_mutex_trylock(&status_mutex) == 0){
+        pthread_mutex_unlock(&status_mutex);
+        syslog(LOG_INFO, "Mutex NU E blocat inainte de fork");
+    } else{
+        syslog(LOG_INFO, "Mutex blocat inainte de fork");
+    }
     pid_t pid = fork();
     if (pid < 0) {
         syslog(LOG_ERR, "Failed to fork");

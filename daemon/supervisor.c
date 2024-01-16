@@ -195,13 +195,19 @@ int supervisor_create_service_wrapper(supervisor_t* supervisor, const char * ser
         args.supervisor = supervisor;
         args.service_index = i;
         args.scheduling_pipe_fd = scheduling_pipe_fd;
+        if(pthread_mutex_trylock(&status_mutex) == 0){
+            pthread_mutex_unlock(&status_mutex);
+            syslog(LOG_INFO, "Mutex NU E blocat inainte de thread");
+        } else{
+            syslog(LOG_INFO, "Mutex blocat inainte de thread");
+        }
         if (pthread_create(&scheduling_thread, NULL, scheduling_thread_function, (void *) &args) != 0) {
             perror("pthread_create");
             exit(EXIT_FAILURE);
         }
     }
     else{
-        syslog(LOG_INFO, "Facem threadul");
+        syslog(LOG_INFO, "Nu Facem threadul");
     }
 
     *new_pid = new_service.pid;
