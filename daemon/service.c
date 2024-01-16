@@ -81,7 +81,6 @@ int service_status(service_t* service) {
     return status;
 }
 
-// TODO: handle scheduling?
 int service_cancel(service_t *service) {
     if (!service->pid) {
         syslog(LOG_ERR, "No such service");
@@ -90,8 +89,14 @@ int service_cancel(service_t *service) {
 
     pthread_mutex_lock(&status_mutex);
     if (service->status == SUPERVISOR_STATUS_PENDING) {
-        service->status = SUPERVISOR_STATUS_TERMINATED;
+        int status;
+
         kill(service->pid, SIGKILL);
+
+        waitpid(service->pid, &status, 0);
+        syslog(LOG_INFO, "Service %s canceling", service->formatted_service_name);
+        service->status = SUPERVISOR_STATUS_TERMINATED;
+
         syslog(LOG_INFO, "Service %d was successfully cancelled!", service->pid);
         pthread_mutex_unlock(&status_mutex);
         return 0;
