@@ -276,6 +276,9 @@ void parse_command_arguments(char *command_str) {
                 strcpy(global_response_str, "Service not created");
             } else {
                 sprintf(global_response_str, "Service created with pid %d\n", *new_pid);
+                if(options.create_stopped > 1){
+                    append_to_global_response_str("Service %d will be started after %d seconds\n", *new_pid, options.create_stopped - 1);
+                }
             }
             free(new_pid);
             free(argv_service);
