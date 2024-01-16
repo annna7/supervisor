@@ -72,7 +72,7 @@ int service_kill(service_t *service) {
 
 int service_status(service_t* service) {
     if (!service->pid) {
-        syslog(LOG_ERR, "No such service");
+        append_to_global_response_str( "No such service");
         return -1;
     }
     pthread_mutex_lock(&status_mutex);
@@ -83,7 +83,7 @@ int service_status(service_t* service) {
 
 int service_cancel(service_t *service) {
     if (!service->pid) {
-        syslog(LOG_ERR, "No such service");
+        append_to_global_response_str( "No such service");
         return -1;
     }
 
@@ -94,14 +94,14 @@ int service_cancel(service_t *service) {
         kill(service->pid, SIGKILL);
 
         waitpid(service->pid, &status, 0);
-        syslog(LOG_INFO, "Service %s canceling", service->formatted_service_name);
+        append_to_global_response_str("Canceling service %s\n", service->formatted_service_name);
         service->status = SUPERVISOR_STATUS_CANCELED;
 
-        syslog(LOG_INFO, "Service %d was successfully cancelled!", service->pid);
+        append_to_global_response_str("Service %d was successfully cancelled!\n", service->pid);
         pthread_mutex_unlock(&status_mutex);
         return 0;
     } else {
-        syslog(LOG_INFO, "Service %d isn't pending and can't be cancelled, use service-kill instead!", service->pid);
+        append_to_global_response_str("Service %d isn't pending and can't be cancelled, use service-kill instead!", service->pid);
         pthread_mutex_unlock(&status_mutex);
         return -1;
     }
