@@ -95,7 +95,7 @@ int service_cancel(service_t *service) {
 
         waitpid(service->pid, &status, 0);
         syslog(LOG_INFO, "Service %s canceling", service->formatted_service_name);
-        service->status = SUPERVISOR_STATUS_TERMINATED;
+        service->status = SUPERVISOR_STATUS_CANCELED;
 
         syslog(LOG_INFO, "Service %d was successfully cancelled!", service->pid);
         pthread_mutex_unlock(&status_mutex);

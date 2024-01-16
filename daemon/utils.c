@@ -88,6 +88,10 @@ void append_service_status_to_string(int service_status, char *response_str) {
             strcat(response_str, "Crashed");
             break;
         }
+        case SUPERVISOR_STATUS_CANCELED: {
+            strcat(response_str, "Canceled");
+            break;
+        }
         default:
             strcat(response_str, "Unknown status");
     }
