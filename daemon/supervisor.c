@@ -88,7 +88,6 @@ int supervisor_create_service_wrapper(supervisor_t* supervisor, const char * ser
         append_to_global_response_str("Failed to create service");
         return -1;
     }
-    syslog(LOG_INFO, "%s\n", new_service.formatted_service_name);
     supervisor->services[i] = new_service;
     append_to_global_response_str( "Just created service with pid %d and status %d", supervisor->services[i].pid, supervisor->services[i].status);
     *new_pid = new_service.pid;
@@ -101,12 +100,13 @@ service_t supervisor_open_service_wrapper(supervisor_t* supervisor, pid_t pid) {
     }
     int i = get_free_service_index(supervisor);
     if (i == -1) {
-        syslog(LOG_ERR, "No space for new service");
+        append_to_global_response_str("No space for new service");
+
         return get_empty_service();
     }
     service_t new_service = service_open(pid);
     if (!new_service.pid) {
-        syslog(LOG_ERR, "Failed to open service");
+        append_to_global_response_str("Failed to open service");
         return get_empty_service();
     }
     supervisor->services[i] = new_service;
@@ -119,12 +119,13 @@ int supervisor_remove_service_wrapper(supervisor_t* supervisor, pid_t pid) {
     }
     int i = get_service_index_from_pid(supervisor, pid);
     if (i == -1) {
-        syslog(LOG_ERR, "Service %d not found", pid);
+        append_to_global_response_str("Service %d not found", pid);
         return -1;
     }
     for (int j = 0; j < supervisor->services[i].argc; j++) {
         free((char*) supervisor->services[i].argv[j]);
     }
+    append_to_global_response_str( "Service removed\n");
     supervisor->services[i] = get_empty_service();
     return 0;
 }
@@ -135,7 +136,7 @@ int supervisor_send_command_to_existing_service_wrapper(supervisor_t* supervisor
     }
     int i = get_service_index_from_pid(supervisor, pid);
     if (i == -1) {
-        syslog(LOG_ERR, "Service %d not found", pid);
+        append_to_global_response_str( "Service %d not found\n", pid);
         return -1;
     }
     switch (command) {
@@ -150,7 +151,6 @@ int supervisor_send_command_to_existing_service_wrapper(supervisor_t* supervisor
             return service_status(&supervisor->services[i]);
         case SUSPEND_SERVICE: {
             int res = service_suspend(&supervisor->services[i]);
-            syslog(LOG_INFO, "Service %d suspended with %d", pid, res);
             return res;
         }
         case RESUME_SERVICE:

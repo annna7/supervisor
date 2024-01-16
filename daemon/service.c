@@ -16,7 +16,7 @@ service_t service_open(pid_t pid) {
     int *argc = malloc(sizeof(int));
     char **argv = get_process_arguments(pid, argc);
     if (argv == NULL) {
-        syslog(LOG_ERR, "Failed to get process arguments");
+        append_to_global_response_str("Failed to get process arguments");
         return get_empty_service();
     }
     service_t service;
@@ -36,29 +36,30 @@ service_t service_open(pid_t pid) {
     service.status = SUPERVISOR_STATUS_RUNNING;
     pthread_mutex_unlock(&status_mutex);
     service.is_opened = true;
-    syslog(LOG_INFO, "Service %s opened", service.formatted_service_name);
+    append_to_global_response_str( "Service %s opened", service.formatted_service_name);
+
     return service;
 }
 
 int service_kill(service_t *service) {
     if (!service->pid) {
-        syslog(LOG_ERR, "No such service");
+        append_to_global_response_str( "No such service");
         return -1;
     }
 
     // assert that service is not pending
     pthread_mutex_lock(&status_mutex);
     if (service->status == SUPERVISOR_STATUS_PENDING) {
-        syslog(LOG_ERR, "Service is pending and cannot be killed. Use service-cancel instead!");
+        append_to_global_response_str( "Service is pending and cannot be killed. Use service-cancel instead!\n");
         pthread_mutex_unlock(&status_mutex);
         return -1;
     }
     pthread_mutex_unlock(&status_mutex);
 
-    syslog(LOG_INFO, "Killing service %s", service->formatted_service_name);
+    append_to_global_response_str("Killing service %s\n", service->formatted_service_name);
 
     kill(service->pid, SIGKILL);
-
+    append_to_global_response_str("Service closed");
     int status;
     // deal with zombie processes and deallocate resources
     waitpid(service->pid, &status, 0);
@@ -121,7 +122,7 @@ int service_resume(service_t *service) {
         syslog(LOG_INFO, "Service %d was successfully resumed!", service->pid);
         return 0;
     } else {
-        syslog(LOG_INFO, "Service %d isn't stopped and can't be resumed!", service->pid);
+        append_to_global_response_str("Service %d isn't stopped and can't be resumed!", service->pid);
         pthread_mutex_unlock(&status_mutex);
         return -1;
     }
@@ -238,19 +239,18 @@ int service_restart(service_t *service) {
 
 int service_suspend(service_t *service) {
     if (!service->pid) {
-        syslog(LOG_ERR, "No such service");
+        append_to_global_response_str( "No such service");
         return -1;
     }
-
     pthread_mutex_lock(&status_mutex);
     if (service->status == SUPERVISOR_STATUS_RUNNING) {
         service->status = SUPERVISOR_STATUS_STOPPED;
         pthread_mutex_unlock(&status_mutex);
         kill(service->pid, SIGSTOP);
-        syslog(LOG_INFO, "Service %d was successfully suspended!", service->pid);
+        append_to_global_response_str("Service %d was successfully suspended!", service->pid);
         return 0;
     } else {
-        syslog(LOG_INFO, "Service %d isn't running and can't be suspended!", service->pid);
+        append_to_global_response_str("Service %d isn't running and can't be suspended!", service->pid);
         pthread_mutex_unlock(&status_mutex);
         return -1;
     }

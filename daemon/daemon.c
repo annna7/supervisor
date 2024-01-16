@@ -258,7 +258,7 @@ void parse_command_arguments(char *command_str) {
             }
 
             supervisor_open_service_wrapper(supervisor, pid);
-            append_to_global_response_str( "Service opened");
+
         } else if (strcmp(command, "close-service") == 0) {
             if (optind + 1 > number_of_tokens) {
                 append_to_global_response_str("Not enough arguments for close-service");
@@ -272,7 +272,7 @@ void parse_command_arguments(char *command_str) {
             }
 
             supervisor_send_command_to_existing_service_wrapper(supervisor, pid, KILL_SERVICE);
-            append_to_global_response_str("Service closed");
+            //append_to_global_response_str("Service closed");
         } else if (strcmp(command, "remove-service") == 0) {
             if (optind + 1 > number_of_tokens) {
                 append_to_global_response_str("Not enough arguments for remove-service");
@@ -286,7 +286,7 @@ void parse_command_arguments(char *command_str) {
             }
 
             supervisor_remove_service_wrapper(supervisor, pid);
-            append_to_global_response_str( "Service removed");
+            //append_to_global_response_str( "Service removed");
         } else if (strcmp(command, "suspend-service") == 0) {
             if (optind + 1 > number_of_tokens) {
                 append_to_global_response_str( "Not enough arguments for suspend-service");
@@ -298,9 +298,9 @@ void parse_command_arguments(char *command_str) {
 
             // TODO: error handling with if's in the other calls
             if (supervisor_send_command_to_existing_service_wrapper(supervisor, pid, SUSPEND_SERVICE) == 0) {
-                append_to_global_response_str( "Service successfully suspended!");
+                ;
             } else {
-                append_to_global_response_str( "Encountered error while suspending service!");
+                ;
             }
         } else if (strcmp(command, "service-status") == 0) {
             if (optind + 1 > number_of_tokens) {
@@ -329,8 +329,6 @@ void parse_command_arguments(char *command_str) {
 
             if (supervisor_send_command_to_existing_service_wrapper(supervisor, pid, RESUME_SERVICE) == 0) {
                 append_to_global_response_str( "Service successfully resumed!");
-            } else {
-                append_to_global_response_str( "Encountered error while resuming service!");
             }
         } else if (strcmp(command, "list-supervisor") == 0) {
             unsigned int *count = malloc(sizeof(unsigned int));
