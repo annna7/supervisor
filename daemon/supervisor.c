@@ -188,7 +188,6 @@ int supervisor_send_command_to_existing_service_wrapper(supervisor_t* supervisor
         case RESUME_SERVICE:
             return service_resume(&supervisor->services[i]);
         case CANCEL_SERVICE:
-            // TODO: pending
             return service_cancel(&supervisor->services[i]);
         default:
             syslog(LOG_ERR, "Invalid command %d", command);

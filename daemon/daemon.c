@@ -308,7 +308,21 @@ void parse_command_arguments(char *command_str) {
 
             supervisor_send_command_to_existing_service_wrapper(supervisor, pid, KILL_SERVICE);
             strcpy(global_response_str, "Service closed");
-        } else if (strcmp(command, "remove-service") == 0) {
+        }else if(strcmp(command, "cancel-service") == 0){
+            if (optind + 1 > number_of_tokens) {
+                strcpy(global_response_str, "Not enough arguments for cancel-service");
+                return;
+            }
+            pid_t pid = atoi(command_tokens[optind++]);
+            supervisor_t* supervisor = supervisor_get(options.instance);
+            if (supervisor == NULL) {
+                strcpy(global_response_str, "Invalid supervisor instance");
+                return;
+            }
+
+            supervisor_send_command_to_existing_service_wrapper(supervisor, pid, CANCEL_SERVICE);
+            strcpy(global_response_str, "Service canceled");
+        }else if (strcmp(command, "remove-service") == 0) {
             if (optind + 1 > number_of_tokens) {
                 strcpy(global_response_str, "Not enough arguments for remove-service");
                 return;

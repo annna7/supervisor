@@ -157,7 +157,6 @@ void* scheduling_thread_function(void * args){
 
             }
             buf[nbytes] = '\0';
-            syslog(LOG_INFO, "dupa ce schimnd status");
         } else if (nbytes < 0) {
             if (errno != EAGAIN && errno != 9) {
                 if (errno == 9) {
