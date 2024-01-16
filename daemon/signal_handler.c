@@ -8,7 +8,7 @@
 #include "constants.h"
 #include "global_state.h"
 #include <unistd.h>
-#include <uv/errno.h>
+#include <errno.h>
 #include <stdio.h>
 
 void handle_sigchld(int sig, siginfo_t *siginfo, void *context) {
@@ -138,3 +138,40 @@ void* sigchild_listener(void *arg) {
         }
     }
 }
+
+void* scheduling_thread_function(void * args){
+    syslog(LOG_INFO, "Starting scheduling_thread_function");
+    char buf[128];
+    while (1){
+        ssize_t nbytes = read(scheduling_pipe_fd[0], buf, sizeof(buf));
+        if (nbytes > 0) {
+            char *status = strtok(buf, " ");
+            char *pid = strtok(NULL, " ");
+            syslog(LOG_INFO, "Received scheduled process status: %s %s", status, pid);
+            if (status != NULL && pid != NULL) {
+                int supervisor_instance = get_supervisor_instance_from_service_pid(atoi(pid));
+                int service_index = get_service_index_from_pid(supervisors[supervisor_instance], atoi(pid));
+                pthread_mutex_lock(&status_mutex);
+                supervisors[supervisor_instance]->services[service_index].status = SUPERVISOR_STATUS_RUNNING;
+                pthread_mutex_unlock(&status_mutex);
+
+            }
+            buf[nbytes] = '\0';
+            syslog(LOG_INFO, "dupa ce schimnd status");
+        } else if (nbytes < 0) {
+            if (errno != EAGAIN && errno != 9) {
+                if (errno == 9) {
+                    syslog(LOG_ERR, "iar eu");
+                } else {
+                    syslog(LOG_ERR, "Failed to read from pipe");
+                    syslog(LOG_ERR, "Error: %s %d", strerror(errno), errno);
+                }
+            }
+        } else if (nbytes == 0) {
+            syslog(LOG_ERR, "Pipe closed");
+            break;
+        }
+        sleep(1);
+    }
+}
+

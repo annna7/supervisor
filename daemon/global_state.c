@@ -7,6 +7,8 @@ volatile sig_atomic_t keep_running = 1;
 pthread_mutex_t status_mutex = PTHREAD_MUTEX_INITIALIZER;
 // pipe for communication between signal handler and main thread
 int pipe_fd[2];
+// pipe for communication between scheduled services and daemon
+int scheduling_pipe_fd[2];
 char buffer[RESPONSE_STR_SIZE];
 
 void append_to_global_response_str(const char *format, ...) {

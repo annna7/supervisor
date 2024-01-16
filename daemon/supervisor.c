@@ -2,10 +2,19 @@
 #include <syslog.h>
 #include <string.h>
 #include <time.h>
+#include <unistd.h>
+#include <errno.h>
 #include "supervisor.h"
 #include "global_state.h"
 
 supervisor_t* supervisors[MAX_SUPERVISORS] = {NULL};
+
+typedef struct {
+    supervisor_t * supervisor;
+    pid_t pid;
+    int service_index;
+    int* scheduling_pipe_fd;
+} schedulingThreadArgs;
 
 void list_supervisors() {
     bool are_supervisors = false;
