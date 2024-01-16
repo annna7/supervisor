@@ -16,7 +16,7 @@ void list_supervisors() {
         }
     }
     if (!are_supervisors) {
-        strcpy(global_response_str, "No supervisors at the moment!\n");
+        append_to_global_response_str("No supervisors at the moment!\n");
     }
 }
 
@@ -25,7 +25,7 @@ supervisor_t* supervisor_init(int instance) {
         return NULL;
     }
     if (supervisors[instance]) {
-        append_to_global_response_str("Supervisor %d already initiated", instance);
+        append_to_global_response_str("Supervisor %d is already initialized!", instance);
         return NULL;
     }
     supervisor_t* supervisor = malloc(sizeof(supervisor_t));
@@ -37,7 +37,7 @@ supervisor_t* supervisor_init(int instance) {
     for (int i = 0; i < MAX_SERVICES_PER_INSTANCE; i++) {
         supervisor->services[i] = get_empty_service();
     }
-    append_to_global_response_str("Initiated supervisor with instance %d", instance);
+    append_to_global_response_str("Initialized supervisor instance %d", instance);
     syslog(LOG_INFO, "%s %d", "supervisor_init", instance);
     return supervisor;
 }
@@ -47,7 +47,7 @@ supervisor_t* supervisor_get(int instance) {
         return NULL;
     }
     if(supervisors[instance] == NULL) {
-        append_to_global_response_str("Supervisor %d does not exist\n", instance);
+        return NULL;
     }
     return supervisors[instance];
 }
@@ -89,7 +89,8 @@ int supervisor_create_service_wrapper(supervisor_t* supervisor, const char * ser
         return -1;
     }
     supervisor->services[i] = new_service;
-    append_to_global_response_str( "Just created service with pid %d and status %d", supervisor->services[i].pid, supervisor->services[i].status);
+    append_to_global_response_str( "Created service with pid %d - ", new_service.pid);
+    append_service_status_to_string(new_service.status, global_response_str);
     *new_pid = new_service.pid;
     return 0;
 }
@@ -125,7 +126,7 @@ int supervisor_remove_service_wrapper(supervisor_t* supervisor, pid_t pid) {
     for (int j = 0; j < supervisor->services[i].argc; j++) {
         free((char*) supervisor->services[i].argv[j]);
     }
-    append_to_global_response_str( "Service removed\n");
+    append_to_global_response_str( "Service %d removed\n", pid);
     supervisor->services[i] = get_empty_service();
     return 0;
 }
@@ -141,18 +142,12 @@ int supervisor_send_command_to_existing_service_wrapper(supervisor_t* supervisor
     }
     switch (command) {
         case KILL_SERVICE: {
-            int error = service_kill(&supervisor->services[i]);
-            if (!error) {
-                return error;
-            }
-            return supervisor_remove_service_wrapper(supervisor, pid);
+            return service_kill(&supervisor->services[i]);
         }
         case STATUS_SERVICE:
             return service_status(&supervisor->services[i]);
-        case SUSPEND_SERVICE: {
-            int res = service_suspend(&supervisor->services[i]);
-            return res;
-        }
+        case SUSPEND_SERVICE:
+            return service_suspend(&supervisor->services[i]);
         case RESUME_SERVICE:
             return service_resume(&supervisor->services[i]);
         case CANCEL_SERVICE:
@@ -224,6 +219,7 @@ int supervisor_freelist(supervisor_t* supervisor, pid_t* pid_array, int count) {
 
     for (int i = 0; i < count; i++) {
         int index = get_service_index_from_pid(supervisor, pid_array[i]);
+        syslog(LOG_INFO, "supervisor_freelist: %d %d", pid_array[i], index);
         if (index == -1) {
             syslog(LOG_ERR, "supervisor_freelist: service %d not found", pid_array[i]);
             return -1;

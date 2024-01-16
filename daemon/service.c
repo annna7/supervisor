@@ -47,7 +47,6 @@ int service_kill(service_t *service) {
         return -1;
     }
 
-    // assert that service is not pending
     pthread_mutex_lock(&status_mutex);
     if (service->status == SUPERVISOR_STATUS_PENDING) {
         append_to_global_response_str( "Service is pending and cannot be killed. Use service-cancel instead!\n");
@@ -59,7 +58,7 @@ int service_kill(service_t *service) {
     append_to_global_response_str("Killing service %s\n", service->formatted_service_name);
 
     kill(service->pid, SIGKILL);
-    append_to_global_response_str("Service closed");
+    append_to_global_response_str("Service %d closed", service->pid);
     int status;
     // deal with zombie processes and deallocate resources
     waitpid(service->pid, &status, 0);
@@ -110,8 +109,7 @@ int service_resume(service_t *service) {
 
     pthread_mutex_lock(&status_mutex);
     if (service->status == SUPERVISOR_STATUS_PENDING) {
-        // TODO: handle scheduling?
-        syslog(LOG_ERR, "Don't know how to handle scheduling yet!");
+        append_to_global_response_str("Service %d is pending and cannot be resumed. Use service-cancel instead!\n", service->pid);
         pthread_mutex_unlock(&status_mutex);
         return -1;
     } else if (service->status == SUPERVISOR_STATUS_STOPPED) {
@@ -119,7 +117,7 @@ int service_resume(service_t *service) {
         // service->status = SUPERVISOR_STATUS_RUNNING;
         pthread_mutex_unlock(&status_mutex);
         kill(service->pid, SIGCONT);
-        syslog(LOG_INFO, "Service %d was successfully resumed!", service->pid);
+        append_to_global_response_str("Service %d was successfully resumed!", service->pid);
         return 0;
     } else {
         append_to_global_response_str("Service %d isn't stopped and can't be resumed!", service->pid);
@@ -146,16 +144,11 @@ service_t service_create(const char * service_name, const char * program_path, c
         service.argv[i][MAX_ARG_LENGTH - 1] = '\0';
     }
 
-    syslog(LOG_INFO, "In CREATE SERVICE, printing argv's");
-    for (int i = 0; i < service.argc; i++) {
-        syslog(LOG_INFO, "%s", service.argv[i]);
-    }
-
-
     pthread_mutex_lock(&status_mutex);
     if (flags & SUPERVISOR_FLAGS_CREATESTOPPED) {
         service.status = SUPERVISOR_STATUS_STOPPED;
         syslog(LOG_INFO, "Service %s will be created stopped", service_name);
+        append_to_global_response_str("Service %s will be created stopped\n", service_name);
     } else {
         service.status = SUPERVISOR_STATUS_RUNNING;
         syslog(LOG_INFO, "%s %s %s", "Starting service", service_name, program_path);

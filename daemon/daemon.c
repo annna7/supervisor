@@ -176,10 +176,10 @@ void parse_command_arguments(char *command_str) {
         }
     } else {
         struct option long_options[] = {
-                {"instance", required_argument, 0, 'i'},
-                {"create-stopped", no_argument, 0, 'c'},
-                {"restart-times", required_argument, 0, 'r'},
-                {0, 0, 0, 0}
+                {"instance",       required_argument, 0, 'i'},
+                {"create-stopped", no_argument,       0, 'c'},
+                {"restart-times",  required_argument, 0, 'r'},
+                {0, 0,                                0, 0}
         };
 
         optind = 1;
@@ -201,173 +201,142 @@ void parse_command_arguments(char *command_str) {
                 case '?':
                     break;
                 default:
-                    syslog(LOG_ERR,"?? getopt returned character code 0%o ??\n", c);
+                    syslog(LOG_ERR, "?? getopt returned character code 0%o ??\n", c);
                     break;
             }
         }
 
         if (strcmp(command, "init") == 0) {
             supervisor_init(options.instance);
-        } else if (strcmp(command, "close") == 0) {
-            supervisor_close(supervisor_get(options.instance));
-        } else if (strcmp(command, "create-service") == 0) {
-            if (optind + 3 > number_of_tokens) {
-                strcpy(global_response_str, "Not enough arguments for create-service");
-                return;
-            }
-
-            char *program_path = command_tokens[optind++];
-            char *service_name = command_tokens[optind++];
-            int argc_service = atoi(command_tokens[optind++]);
-
-            char **argv_service = malloc(
-                    (argc_service + 2) * sizeof(char *)); // +2 for the program name and the NULL terminator
-
-            argv_service[0] = service_name;
-
-            for (int i = 0; i < argc_service; i++) {
-                argv_service[i + 1] = command_tokens[optind++];
-            }
-
-            argv_service[argc_service + 1] = NULL;
-
-            syslog(LOG_INFO, "Option restart %d %d", options.restart_times, SUPERVISOR_FLAGS_RESTARTTIMES(options.restart_times));
-            pid_t *new_pid = malloc(sizeof(pid_t));
-            supervisor_create_service_wrapper(supervisor_get(options.instance), service_name, program_path,
-                                              argv_service, argc_service, options.create_stopped |
-                                                                          SUPERVISOR_FLAGS_RESTARTTIMES(
-                                                                                  options.restart_times), new_pid);
-
-            if (!new_pid) {
-                append_to_global_response_str("%s", "Service not created");
-            }
-
-            free(new_pid);
-            free(argv_service);
-        } else if (strcmp(command, "open-service") == 0) {
-            if (optind + 1 > number_of_tokens) {
-                append_to_global_response_str("Not enough arguments for open-service");
-                return;
-            }
-
-            pid_t pid = atoi(command_tokens[optind++]);
-            supervisor_t* supervisor = supervisor_get(options.instance);
-            if (supervisor == NULL) {
-                append_to_global_response_str( "Invalid supervisor instance");
-                return;
-            }
-
-            supervisor_open_service_wrapper(supervisor, pid);
-
-        } else if (strcmp(command, "close-service") == 0) {
-            if (optind + 1 > number_of_tokens) {
-                append_to_global_response_str("Not enough arguments for close-service");
-                return;
-            }
-            pid_t pid = atoi(command_tokens[optind++]);
-            supervisor_t* supervisor = supervisor_get(options.instance);
-            if (supervisor == NULL) {
-                append_to_global_response_str( "Invalid supervisor instance");
-                return;
-            }
-
-            supervisor_send_command_to_existing_service_wrapper(supervisor, pid, KILL_SERVICE);
-            //append_to_global_response_str("Service closed");
-        } else if (strcmp(command, "remove-service") == 0) {
-            if (optind + 1 > number_of_tokens) {
-                append_to_global_response_str("Not enough arguments for remove-service");
-                return;
-            }
-            pid_t pid = atoi(command_tokens[optind++]);
-            supervisor_t* supervisor = supervisor_get(options.instance);
+        } else {
+            supervisor_t *supervisor = supervisor_get(options.instance);
             if (supervisor == NULL) {
                 append_to_global_response_str("Invalid supervisor instance");
                 return;
             }
+            if (strcmp(command, "close") == 0) {
+                supervisor_close(supervisor_get(options.instance));
+            } else if (strcmp(command, "create-service") == 0) {
+                if (optind + 3 > number_of_tokens) {
+                    strcpy(global_response_str, "Not enough arguments for create-service");
+                    return;
+                }
 
-            supervisor_remove_service_wrapper(supervisor, pid);
-            //append_to_global_response_str( "Service removed");
-        } else if (strcmp(command, "suspend-service") == 0) {
-            if (optind + 1 > number_of_tokens) {
-                append_to_global_response_str( "Not enough arguments for suspend-service");
-                return;
-            }
-            pid_t pid = atoi(command_tokens[optind++]);
-            supervisor_t* supervisor = supervisor_get(options.instance);
+                char *program_path = command_tokens[optind++];
+                char *service_name = command_tokens[optind++];
+                int argc_service = atoi(command_tokens[optind++]);
 
+                char **argv_service = malloc(
+                        (argc_service + 2) * sizeof(char *)); // +2 for the program name and the NULL terminator
 
-            // TODO: error handling with if's in the other calls
-            if (supervisor_send_command_to_existing_service_wrapper(supervisor, pid, SUSPEND_SERVICE) == 0) {
-                ;
-            } else {
-                ;
-            }
-        } else if (strcmp(command, "service-status") == 0) {
-            if (optind + 1 > number_of_tokens) {
-                append_to_global_response_str( "Not enough arguments for service-status");
-                return;
-            }
-            pid_t pid = atoi(command_tokens[optind++]);
-            supervisor_t* supervisor = supervisor_get(options.instance);
-            if (supervisor == NULL) {
-                append_to_global_response_str( "Invalid supervisor instance");
-                return;
-            }
-            int status = supervisor_send_command_to_existing_service_wrapper(supervisor, pid, STATUS_SERVICE);
-            append_service_status_to_string(status, global_response_str);
-        } else if (strcmp(command, "resume-service") == 0) {
-            if (optind + 1 > number_of_tokens) {
-                append_to_global_response_str( "Not enough arguments for resume-service");
-                return;
-            }
-            pid_t pid = atoi(command_tokens[optind++]);
-            supervisor_t* supervisor = supervisor_get(options.instance);
-            if (supervisor == NULL) {
-                append_to_global_response_str( "Invalid supervisor instance");
-                return;
-            }
+                argv_service[0] = service_name;
 
-            if (supervisor_send_command_to_existing_service_wrapper(supervisor, pid, RESUME_SERVICE) == 0) {
-                append_to_global_response_str( "Service successfully resumed!");
-            }
-        } else if (strcmp(command, "list-supervisor") == 0) {
-            unsigned int *count = malloc(sizeof(unsigned int));
-            const char ***service_names = malloc(sizeof(char **));
-            supervisor_t *supervisor = supervisor_get(options.instance);
-            supervisor_list(supervisor, service_names, count);
-            append_to_global_response_str( "List supervisor\n");
-            for (int i = 0; i < *count; i++) {
-                const char *service_name = (*service_names)[i];
-                int service_index = get_service_index_from_service_name(supervisor, service_name);
-                strcat(global_response_str, (*service_names)[i]);
-                strcat(global_response_str, "  -  ");
-                int status = supervisor_send_command_to_existing_service_wrapper(supervisor, supervisor->services[service_index].pid, STATUS_SERVICE);
+                for (int i = 0; i < argc_service; i++) {
+                    argv_service[i + 1] = command_tokens[optind++];
+                }
+
+                argv_service[argc_service + 1] = NULL;
+
+                syslog(LOG_INFO, "Option restart %d %d", options.restart_times,
+                       SUPERVISOR_FLAGS_RESTARTTIMES(options.restart_times));
+                pid_t *new_pid = malloc(sizeof(pid_t));
+                supervisor_create_service_wrapper(supervisor_get(options.instance), service_name, program_path,
+                                                  argv_service, argc_service, options.create_stopped |
+                                                                              SUPERVISOR_FLAGS_RESTARTTIMES(
+                                                                                      options.restart_times), new_pid);
+
+                if (!new_pid) {
+                    append_to_global_response_str("%s", "Service not created");
+                }
+
+                free(new_pid);
+                free(argv_service);
+            } else if (strcmp(command, "open-service") == 0) {
+                if (optind + 1 > number_of_tokens) {
+                    append_to_global_response_str("Not enough arguments for open-service");
+                    return;
+                }
+
+                pid_t pid = atoi(command_tokens[optind++]);
+                supervisor_open_service_wrapper(supervisor, pid);
+            } else if (strcmp(command, "close-service") == 0) {
+                if (optind + 1 > number_of_tokens) {
+                    append_to_global_response_str("Not enough arguments for close-service");
+                    return;
+                }
+                pid_t pid = atoi(command_tokens[optind++]);
+
+                supervisor_send_command_to_existing_service_wrapper(supervisor, pid, KILL_SERVICE);
+            } else if (strcmp(command, "remove-service") == 0) {
+                if (optind + 1 > number_of_tokens) {
+                    append_to_global_response_str("Not enough arguments for remove-service");
+                    return;
+                }
+                pid_t pid = atoi(command_tokens[optind++]);
+
+                supervisor_remove_service_wrapper(supervisor, pid);
+            } else if (strcmp(command, "suspend-service") == 0) {
+                if (optind + 1 > number_of_tokens) {
+                    append_to_global_response_str("Not enough arguments for suspend-service");
+                    return;
+                }
+                pid_t pid = atoi(command_tokens[optind++]);
+
+                supervisor_send_command_to_existing_service_wrapper(supervisor, pid, SUSPEND_SERVICE);
+            } else if (strcmp(command, "service-status") == 0) {
+                if (optind + 1 > number_of_tokens) {
+                    append_to_global_response_str("Not enough arguments for service-status");
+                    return;
+                }
+                pid_t pid = atoi(command_tokens[optind++]);
+                int status = supervisor_send_command_to_existing_service_wrapper(supervisor, pid, STATUS_SERVICE);
                 append_service_status_to_string(status, global_response_str);
-                strcat(global_response_str, "\n");
-            }
-            for (int i = 0; i < *count; i++) {
-                free((void *) (*service_names)[i]);
-            }
-            free(*service_names);
-            free(count);
-        } else if (strcmp(command, "supervisor-freelist") == 0) {
-            if (optind + 1 > number_of_tokens) {
-                append_to_global_response_str( "Not enough arguments for supervisor-freelist");
-                return;
-            }
+            } else if (strcmp(command, "resume-service") == 0) {
+                if (optind + 1 > number_of_tokens) {
+                    append_to_global_response_str("Not enough arguments for resume-service");
+                    return;
+                }
+                pid_t pid = atoi(command_tokens[optind++]);
 
-            supervisor_t* supervisor = supervisor_get(options.instance);
+                supervisor_send_command_to_existing_service_wrapper(supervisor, pid, RESUME_SERVICE);
+            } else if (strcmp(command, "list-supervisor") == 0) {
+                unsigned int *count = malloc(sizeof(unsigned int));
+                const char ***service_names = malloc(sizeof(char **));
+                supervisor_list(supervisor, service_names, count);
+                append_to_global_response_str("List supervisor\n");
+                for (int i = 0; i < *count; i++) {
+                    const char *service_name = (*service_names)[i];
+                    int service_index = get_service_index_from_service_name(supervisor, service_name);
+                    append_to_global_response_str((*service_names)[i]);
+                    append_to_global_response_str("  -  ");
+                    int status = supervisor_send_command_to_existing_service_wrapper(supervisor,
+                                                                                     supervisor->services[service_index].pid,
+                                                                                     STATUS_SERVICE);
+                    append_service_status_to_string(status, global_response_str);
+                    append_to_global_response_str("\n");
+                }
+                for (int i = 0; i < *count; i++) {
+                    free((void *) (*service_names)[i]);
+                }
+                free(*service_names);
+                free(count);
+            } else if (strcmp(command, "supervisor-freelist") == 0) {
+                if (optind + 1 > number_of_tokens) {
+                    append_to_global_response_str("Not enough arguments for supervisor-freelist");
+                    return;
+                }
 
-            int count = atoi(command_tokens[optind++]);
-            pid_t* pid_array = malloc(count * sizeof(pid_t));
-            for (int i = 0; i < count; i++) {
-                pid_array[i] = atoi(command_tokens[optind++]);
+                int count = atoi(command_tokens[optind++]);
+                pid_t *pid_array = malloc(count * sizeof(pid_t));
+                for (int i = 0; i < count; i++) {
+                    pid_array[i] = atoi(command_tokens[optind++]);
+                }
+
+                supervisor_freelist(supervisor, pid_array, count);
+                append_to_global_response_str("Services freed");
+            } else {
+                append_to_global_response_str("Unknown command");
             }
-
-            supervisor_freelist(supervisor, pid_array, count);
-            append_to_global_response_str( "Services freed");
-        } else {
-            append_to_global_response_str( "Unknown command");
         }
     }
 
